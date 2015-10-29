@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.webdevicesimulator.application.config;
 
 import java.io.IOException;
@@ -10,6 +17,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.sql.DataSource;
 
@@ -23,8 +31,6 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.handler.logging.LoggingHandler;
-import org.jboss.netty.logging.InternalLogLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
@@ -36,7 +42,6 @@ import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.core.env.Environment;
-import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.web.servlet.ViewResolver;
@@ -49,7 +54,11 @@ import com.alliander.osgp.oslp.OslpEncoder;
 import com.alliander.osgp.shared.security.CertificateHelper;
 import com.alliander.osgp.webdevicesimulator.service.OslpChannelHandler;
 import com.alliander.osgp.webdevicesimulator.service.OslpSecurityHandler;
+import com.alliander.osgp.webdevicesimulator.service.RegisterDevice;
+import com.alliander.osgp.webdevicesimulator.service.SwitchingServices;
 import com.googlecode.flyway.core.Flyway;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 /**
  * An application context Java configuration class. The usage of Java
@@ -73,6 +82,9 @@ public class ApplicationContext {
     private static final String PROPERTY_NAME_DATABASE_PASSWORD = "db.password";
     private static final String PROPERTY_NAME_DATABASE_URL = "db.url";
     private static final String PROPERTY_NAME_DATABASE_USERNAME = "db.username";
+
+    private static final String PROPERTY_NAME_DATABASE_MAX_POOL_SIZE = "db.max_pool_size";
+    private static final String PROPERTY_NAME_DATABASE_AUTO_COMMIT = "db.auto_commit";
 
     private static final String PROPERTY_NAME_HIBERNATE_DIALECT = "hibernate.dialect";
     private static final String PROPERTY_NAME_HIBERNATE_FORMAT_SQL = "hibernate.format_sql";
@@ -101,35 +113,48 @@ public class ApplicationContext {
     private static final String PROPERTY_NAME_OSLP_SEQUENCE_NUMBER_MAXIMUM = "oslp.sequence.number.maximum";
 
     private static final String PROPERTY_NAME_RESPONSE_DELAY_TIME = "response.delay.time";
+    private static final String PROPERTY_NAME_RESPONSE_DELAY_RANDOM_RANGE = "response.delay.random.range";
+
+    private static final String PROPERTY_NAME_CHECKBOX_DEVICE_REGISTRATION_VALUE = "checkbox.device.registration.value";
+    private static final String PROPERTY_NAME_CHECKBOX_DEVICE_REBOOT_VALUE = "checkbox.device.reboot.value";
+    private static final String PROPERTY_NAME_CHECKBOX_LIGHT_SWITCHING_VALUE = "checkbox.light.switching.value";
+    private static final String PROPERTY_NAME_CHECKBOX_TARIFF_SWITCHING_VALUE = "checkbox.tariff.switching.value";
+    private static final String PROPERTY_NAME_CHECKBOX_EVENT_NOTIFICATION_VALUE = "checkbox.event.notification.value";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationContext.class);
 
     @Resource
     private Environment environment;
 
+    private HikariDataSource dataSource;
+
     /**
      * Method for creating the Data Source.
-     * 
+     *
      * @return DataSource
      */
-    public DataSource dataSource() {
-        final SingleConnectionDataSource singleConnectionDataSource = new SingleConnectionDataSource();
-        singleConnectionDataSource.setAutoCommit(false);
-        final Properties properties = new Properties();
-        properties.setProperty("socketTimeout", "0");
-        properties.setProperty("tcpKeepAlive", "true");
-        singleConnectionDataSource.setDriverClassName(this.environment
-                .getRequiredProperty(PROPERTY_NAME_DATABASE_DRIVER));
-        singleConnectionDataSource.setUrl(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_URL));
-        singleConnectionDataSource.setUsername(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_USERNAME));
-        singleConnectionDataSource.setPassword(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_PASSWORD));
-        singleConnectionDataSource.setSuppressClose(true);
-        return singleConnectionDataSource;
+    public DataSource getDataSource() {
+        if (this.dataSource == null) {
+            final HikariConfig hikariConfig = new HikariConfig();
+
+            hikariConfig.setDriverClassName(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_DRIVER));
+            hikariConfig.setJdbcUrl(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_URL));
+            hikariConfig.setUsername(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_USERNAME));
+            hikariConfig.setPassword(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_PASSWORD));
+
+            hikariConfig.setMaximumPoolSize(Integer.parseInt(this.environment
+                    .getRequiredProperty(PROPERTY_NAME_DATABASE_MAX_POOL_SIZE)));
+            hikariConfig.setAutoCommit(Boolean.parseBoolean(this.environment
+                    .getRequiredProperty(PROPERTY_NAME_DATABASE_AUTO_COMMIT)));
+
+            this.dataSource = new HikariDataSource(hikariConfig);
+        }
+        return this.dataSource;
     }
 
     /**
      * Method for creating the Transaction Manager.
-     * 
+     *
      * @return JpaTransactionManager
      * @throws ClassNotFoundException
      *             when class not found
@@ -153,14 +178,14 @@ public class ApplicationContext {
         flyway.setInitOnMigrate(Boolean.parseBoolean(this.environment
                 .getRequiredProperty(PROPERTY_NAME_FLYWAY_INIT_ON_MIGRATE)));
 
-        flyway.setDataSource(this.dataSource());
+        flyway.setDataSource(this.getDataSource());
 
         return flyway;
     }
 
     /**
      * Method for creating the Entity Manager Factory Bean.
-     * 
+     *
      * @return LocalContainerEntityManagerFactoryBean
      * @throws ClassNotFoundException
      *             when class not found
@@ -171,7 +196,7 @@ public class ApplicationContext {
         final LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
 
         entityManagerFactoryBean.setPersistenceUnitName("OSPG_DEVICESIMULATOR_WEB");
-        entityManagerFactoryBean.setDataSource(this.dataSource());
+        entityManagerFactoryBean.setDataSource(this.getDataSource());
         entityManagerFactoryBean.setPackagesToScan(this.environment
                 .getRequiredProperty(PROPERTY_NAME_ENTITYMANAGER_PACKAGES_TO_SCAN));
         entityManagerFactoryBean.setPersistenceProviderClass(HibernatePersistence.class);
@@ -193,7 +218,7 @@ public class ApplicationContext {
 
     /**
      * Method for creating the Message Source.
-     * 
+     *
      * @return MessageSource
      */
     @Bean
@@ -209,7 +234,7 @@ public class ApplicationContext {
 
     /**
      * Method for resolving views.
-     * 
+     *
      * @return ViewResolver
      */
     @Bean
@@ -231,7 +256,7 @@ public class ApplicationContext {
         final ChannelPipelineFactory pipelineFactory = new ChannelPipelineFactory() {
             @Override
             public ChannelPipeline getPipeline() throws InvalidKeySpecException, NoSuchAlgorithmException, IOException,
-                    NoSuchProviderException {
+            NoSuchProviderException {
                 final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
 
                 LOGGER.info("Created new client pipeline");
@@ -261,7 +286,7 @@ public class ApplicationContext {
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             @Override
             public ChannelPipeline getPipeline() throws InvalidKeySpecException, NoSuchAlgorithmException, IOException,
-                    NoSuchProviderException {
+            NoSuchProviderException {
                 final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
                 LOGGER.info("Created new server pipeline");
 
@@ -278,10 +303,8 @@ public class ApplicationContext {
     }
 
     private ChannelPipeline createPipeLine() throws NoSuchAlgorithmException, InvalidKeySpecException,
-            NoSuchProviderException, IOException {
+    NoSuchProviderException, IOException {
         final ChannelPipeline pipeline = Channels.pipeline();
-
-        pipeline.addLast("loggingHandler", new LoggingHandler(InternalLogLevel.INFO, false));
 
         pipeline.addLast("oslpEncoder", new OslpEncoder());
         pipeline.addLast("oslpDecoder", new OslpDecoder(this.oslpSignature(), this.oslpSignatureProvider()));
@@ -298,13 +321,13 @@ public class ApplicationContext {
 
     @Bean
     public OslpDecoder oslpDecoder() throws InvalidKeySpecException, NoSuchAlgorithmException, IOException,
-            NoSuchProviderException {
+    NoSuchProviderException {
         return new OslpDecoder(this.oslpSignature(), this.oslpSignatureProvider());
     }
 
     @Bean
     public PublicKey publicKey() throws NoSuchAlgorithmException, IOException, InvalidKeySpecException,
-            NoSuchProviderException {
+    NoSuchProviderException {
         return CertificateHelper.createPublicKey(
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_VERIFYKEY_PATH),
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE),
@@ -313,7 +336,7 @@ public class ApplicationContext {
 
     @Bean
     public PrivateKey privateKey() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException,
-            NoSuchProviderException {
+    NoSuchProviderException {
         return CertificateHelper.createPrivateKey(
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_SIGNKEY_PATH),
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE),
@@ -371,16 +394,79 @@ public class ApplicationContext {
     }
 
     @Bean
+    public RegisterDevice registerDevice() {
+        return new RegisterDevice();
+    }
+
+    @Bean
+    public SwitchingServices switchingServices() {
+        return new SwitchingServices();
+    }
+
+    @Bean
     public Long responseDelayTime() {
         final String propertyValue = this.environment.getProperty(PROPERTY_NAME_RESPONSE_DELAY_TIME);
+
         final Long value = propertyValue == null ? null : Long.parseLong(propertyValue);
         if (value == null) {
             LOGGER.info("response delay time in milliseconds is not set using property: {}",
                     PROPERTY_NAME_RESPONSE_DELAY_TIME);
         } else {
+
             LOGGER.info("response delay time in milliseconds: {}", value);
         }
 
         return value;
+    }
+
+    @Bean
+    public Long reponseDelayRandomRange() {
+        final String propertyValue = this.environment.getProperty(PROPERTY_NAME_RESPONSE_DELAY_RANDOM_RANGE);
+
+        final Long value = propertyValue == null ? null : Long.parseLong(propertyValue);
+        if (value == null) {
+            LOGGER.info("response end delay time in milliseconds is not set using property: {}",
+                    PROPERTY_NAME_RESPONSE_DELAY_RANDOM_RANGE);
+        } else {
+
+            LOGGER.info("response end delay time in milliseconds: {}", value);
+        }
+
+        return value;
+    }
+
+    @Bean
+    public Boolean checkboxDeviceRegistrationValue() {
+        return Boolean.parseBoolean(this.environment
+                .getRequiredProperty(PROPERTY_NAME_CHECKBOX_DEVICE_REGISTRATION_VALUE));
+    }
+
+    @Bean
+    public Boolean checkboxDeviceRebootValue() {
+        return Boolean.parseBoolean(this.environment.getRequiredProperty(PROPERTY_NAME_CHECKBOX_DEVICE_REBOOT_VALUE));
+    }
+
+    @Bean
+    public Boolean checkboxLightSwitchingValue() {
+        return Boolean.parseBoolean(this.environment.getRequiredProperty(PROPERTY_NAME_CHECKBOX_LIGHT_SWITCHING_VALUE));
+    }
+
+    @Bean
+    public Boolean checkboxTariffSwitchingValue() {
+        return Boolean
+                .parseBoolean(this.environment.getRequiredProperty(PROPERTY_NAME_CHECKBOX_TARIFF_SWITCHING_VALUE));
+    }
+
+    @Bean
+    public Boolean checkboxEventNotificationValue() {
+        return Boolean.parseBoolean(this.environment
+                .getRequiredProperty(PROPERTY_NAME_CHECKBOX_EVENT_NOTIFICATION_VALUE));
+    }
+
+    @PreDestroy
+    public void destroyDataSource() {
+        if (this.dataSource != null) {
+            this.dataSource.close();
+        }
     }
 }

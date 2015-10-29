@@ -1,6 +1,11 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging;
-
-import java.io.Serializable;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -15,7 +20,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessageCreator;
 
-import com.alliander.osgp.shared.exceptionhandling.OsgpException;
 import com.alliander.osgp.shared.infra.jms.Constants;
 import com.alliander.osgp.shared.infra.jms.ProtocolResponseMessage;
 import com.alliander.osgp.shared.infra.jms.ResponseMessage;
@@ -76,10 +80,9 @@ public class DeviceResponseMessageSender implements ResponseMessageSender {
 
     private void sendMessage(final ProtocolResponseMessage responseMessage) {
         this.oslpResponsesJmsTemplate.send(new MessageCreator() {
-
             @Override
             public Message createMessage(final Session session) throws JMSException {
-            	final ObjectMessage objectMessage = session.createObjectMessage((Serializable) responseMessage);                
+                final ObjectMessage objectMessage = session.createObjectMessage(responseMessage);
                 objectMessage.setJMSCorrelationID(responseMessage.getCorrelationUid());
                 objectMessage.setStringProperty(Constants.DOMAIN, responseMessage.getDomain());
                 objectMessage.setStringProperty(Constants.DOMAIN_VERSION, responseMessage.getDomainVersion());
@@ -90,13 +93,13 @@ public class DeviceResponseMessageSender implements ResponseMessageSender {
                         responseMessage.getDeviceIdentification());
                 objectMessage.setStringProperty(Constants.RESULT, responseMessage.getResult().toString());
                 if (responseMessage.getOsgpException() != null) {
-                	objectMessage.setStringProperty(Constants.DESCRIPTION, ((OsgpException) responseMessage.getOsgpException()).getMessage());
+                    objectMessage.setStringProperty(Constants.DESCRIPTION, responseMessage.getOsgpException()
+                            .getMessage());
                 }
                 objectMessage.setBooleanProperty(Constants.IS_SCHEDULED, responseMessage.isScheduled());
                 objectMessage.setIntProperty(Constants.RETRY_COUNT, responseMessage.getRetryCount());
                 return objectMessage;
             }
-
         });
     }
 }

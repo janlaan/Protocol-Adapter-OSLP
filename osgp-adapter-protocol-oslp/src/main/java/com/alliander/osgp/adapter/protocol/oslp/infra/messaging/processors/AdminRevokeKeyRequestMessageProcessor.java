@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging.processors;
 
 import javax.jms.JMSException;
@@ -15,9 +22,6 @@ import com.alliander.osgp.shared.infra.jms.Constants;
 
 /**
  * Class for processing common revoke key request messages
- * 
- * @author CGI
- * 
  */
 @Component("oslpAdminRevokeKeyRequestMessageProcessor")
 public class AdminRevokeKeyRequestMessageProcessor extends DeviceRequestMessageProcessor {
@@ -26,16 +30,15 @@ public class AdminRevokeKeyRequestMessageProcessor extends DeviceRequestMessageP
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminRevokeKeyRequestMessageProcessor.class);
 
-    public AdminRevokeKeyRequestMessageProcessor() {
-        super(DeviceRequestMessageType.REVOKE_KEY);
-    }
-
     /**
      * Autowired field device management application service
      */
     @Autowired
-    // @Qualifier(value = "oslpDeviceManagementService")
     private DeviceManagementService deviceManagementService;
+
+    public AdminRevokeKeyRequestMessageProcessor() {
+        super(DeviceRequestMessageType.REVOKE_KEY);
+    }
 
     @Override
     public void processMessage(final ObjectMessage message) {
@@ -66,16 +69,9 @@ public class AdminRevokeKeyRequestMessageProcessor extends DeviceRequestMessageP
             return;
         }
 
-        try {
-            LOGGER.info("Calling application service function: {} for domain: {} {}", messageType, domain,
-                    domainVersion);
+        LOGGER.info("Calling application service function: {} for domain: {} {}", messageType, domain, domainVersion);
 
-            this.deviceManagementService.revokeKey(organisationIdentification, deviceIdentification, correlationUid,
-                    this.responseMessageSender, domain, domainVersion, messageType);
-
-        } catch (final Exception e) {
-            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
-                    domainVersion, messageType);
-        }
+        this.deviceManagementService.revokeKey(organisationIdentification, deviceIdentification, correlationUid,
+                this.responseMessageSender, domain, domainVersion, messageType);
     }
 }

@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.application.services;
 
 import org.slf4j.Logger;
@@ -44,7 +51,7 @@ public class DeviceManagementService {
 
     /**
      * Send a new event notification to OSGP Core with the given arguments.
-     * 
+     *
      * @param deviceId
      *            The Uid of the device
      * @param eventType
@@ -98,7 +105,8 @@ public class DeviceManagementService {
 
         } catch (final Exception e) {
             LOGGER.error("Unexpected exception during updateKey", e);
-        	TechnicalException ex= new TechnicalException(ComponentType.UNKNOWN, "Unexpected exception while retrieving response message", e);
+            final TechnicalException ex = new TechnicalException(ComponentType.UNKNOWN,
+                    "Unexpected exception while retrieving response message", e);
 
             this.sendResponseMessage(domain, domainVersion, messageType, correlationUid, organisationIdentification,
                     deviceIdentification, ResponseMessageResultType.NOT_OK, ex, responseMessageSender);
@@ -129,7 +137,8 @@ public class DeviceManagementService {
 
         } catch (final Exception e) {
             LOGGER.error("Unexpected exception during revokeKey", e);
-        	TechnicalException ex= new TechnicalException(ComponentType.UNKNOWN, "Unexpected exception while retrieving response message", e);
+            final TechnicalException ex = new TechnicalException(ComponentType.UNKNOWN,
+                    "Unexpected exception while retrieving response message", e);
             this.sendResponseMessage(domain, domainVersion, messageType, correlationUid, organisationIdentification,
                     deviceIdentification, ResponseMessageResultType.NOT_OK, ex, responseMessageSender);
         }

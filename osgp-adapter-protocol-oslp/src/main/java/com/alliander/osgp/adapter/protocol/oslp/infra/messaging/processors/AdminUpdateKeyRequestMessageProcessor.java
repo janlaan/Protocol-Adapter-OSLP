@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging.processors;
 
 import javax.jms.JMSException;
@@ -15,9 +22,6 @@ import com.alliander.osgp.shared.infra.jms.Constants;
 
 /**
  * Class for processing common update key request messages
- * 
- * @author CGI
- * 
  */
 @Component("oslpAdminUpdateKeyRequestMessageProcessor")
 public class AdminUpdateKeyRequestMessageProcessor extends DeviceRequestMessageProcessor {
@@ -26,16 +30,15 @@ public class AdminUpdateKeyRequestMessageProcessor extends DeviceRequestMessageP
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminUpdateKeyRequestMessageProcessor.class);
 
-    public AdminUpdateKeyRequestMessageProcessor() {
-        super(DeviceRequestMessageType.UPDATE_KEY);
-    }
-
     /**
      * Autowired field device management application service
      */
     @Autowired
-    // @Qualifier(value = "oslpDeviceManagementService")
     private DeviceManagementService deviceManagementService;
+
+    public AdminUpdateKeyRequestMessageProcessor() {
+        super(DeviceRequestMessageType.UPDATE_KEY);
+    }
 
     @Override
     public void processMessage(final ObjectMessage message) {
@@ -74,7 +77,6 @@ public class AdminUpdateKeyRequestMessageProcessor extends DeviceRequestMessageP
 
             this.deviceManagementService.updateKey(organisationIdentification, deviceIdentification, correlationUid,
                     this.responseMessageSender, domain, domainVersion, messageType, publicKey);
-
         } catch (final Exception e) {
             this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
                     domainVersion, messageType);

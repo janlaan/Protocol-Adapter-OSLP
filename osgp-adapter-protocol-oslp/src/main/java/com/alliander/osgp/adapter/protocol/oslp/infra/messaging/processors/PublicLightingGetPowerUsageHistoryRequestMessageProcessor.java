@@ -1,5 +1,13 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging.processors;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 import javax.jms.JMSException;
@@ -16,8 +24,14 @@ import com.alliander.osgp.adapter.protocol.oslp.device.responses.GetPowerUsageHi
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceResponseMessageSender;
+import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpEnvelopeProcessor;
+import com.alliander.osgp.dto.valueobjects.HistoryTermType;
 import com.alliander.osgp.dto.valueobjects.PowerUsageHistoryMessageDataContainer;
 import com.alliander.osgp.dto.valueobjects.PowerUsageHistoryResponseMessageDataContainer;
+import com.alliander.osgp.dto.valueobjects.TimePeriod;
+import com.alliander.osgp.oslp.OslpEnvelope;
+import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
+import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
 import com.alliander.osgp.shared.exceptionhandling.ComponentType;
 import com.alliander.osgp.shared.exceptionhandling.OsgpException;
 import com.alliander.osgp.shared.exceptionhandling.TechnicalException;
@@ -27,16 +41,15 @@ import com.alliander.osgp.shared.infra.jms.ResponseMessageResultType;
 
 /**
  * Class for processing public lighting get power usage history request messages
- * 
- * @author CGI
- * 
  */
 @Component("oslpPublicLightingGetPowerUsageHistoryRequestMessageProcessor")
-public class PublicLightingGetPowerUsageHistoryRequestMessageProcessor extends DeviceRequestMessageProcessor {
+public class PublicLightingGetPowerUsageHistoryRequestMessageProcessor extends DeviceRequestMessageProcessor implements
+        OslpEnvelopeProcessor {
     /**
      * Logger for this class
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(PublicLightingGetPowerUsageHistoryRequestMessageProcessor.class);
+    private static final Logger LOGGER = LoggerFactory
+            .getLogger(PublicLightingGetPowerUsageHistoryRequestMessageProcessor.class);
 
     public PublicLightingGetPowerUsageHistoryRequestMessageProcessor() {
         super(DeviceRequestMessageType.GET_POWER_USAGE_HISTORY);
@@ -66,7 +79,6 @@ public class PublicLightingGetPowerUsageHistoryRequestMessageProcessor extends D
             ipAddress = message.getStringProperty(Constants.IP_ADDRESS);
             isScheduled = message.getBooleanProperty(Constants.IS_SCHEDULED);
             retryCount = message.getIntProperty(Constants.RETRY_COUNT);
-
         } catch (final JMSException e) {
             LOGGER.error("UNRECOVERABLE ERROR, unable to read ObjectMessage instance, giving up.", e);
             LOGGER.debug("correlationUid: {}", correlationUid);
@@ -81,54 +93,82 @@ public class PublicLightingGetPowerUsageHistoryRequestMessageProcessor extends D
         }
 
         try {
-            final PowerUsageHistoryMessageDataContainer powerUsageHistoryMessageDataContainerDto = (PowerUsageHistoryMessageDataContainer) message.getObject();
+            final PowerUsageHistoryMessageDataContainer powerUsageHistoryMessageDataContainerDto = (PowerUsageHistoryMessageDataContainer) message
+                    .getObject();
 
             LOGGER.info("Calling DeviceService function: {} for domain: {} {}", messageType, domain, domainVersion);
 
-            final DeviceResponseHandler deviceResponseHandler = new DeviceResponseHandler() {
+            final GetPowerUsageHistoryDeviceRequest deviceRequest = new GetPowerUsageHistoryDeviceRequest(
+                    organisationIdentification, deviceIdentification, correlationUid,
+                    powerUsageHistoryMessageDataContainerDto.getTimePeriod(),
+                    powerUsageHistoryMessageDataContainerDto.getHistoryTermType(), domain, domainVersion, messageType,
+                    ipAddress, retryCount, isScheduled);
 
-                @Override
-                public void handleResponse(final DeviceResponse deviceResponse) {
-                    try {
-                        PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.handleGetPowerUsageHistoryDeviceResponse(deviceResponse,
-                                powerUsageHistoryMessageDataContainerDto, PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.responseMessageSender,
-                                message.getStringProperty(Constants.DOMAIN), message.getStringProperty(Constants.DOMAIN_VERSION), message.getJMSType(),
-                                message.propertyExists(Constants.IS_SCHEDULED) ? message.getBooleanProperty(Constants.IS_SCHEDULED) : false,
-                                message.getIntProperty(Constants.RETRY_COUNT));
-                    } catch (final JMSException e) {
-                        LOGGER.error("JMSException", e);
-                    }
-
-                }
-
-                @Override
-                public void handleException(final Throwable t, final DeviceResponse deviceResponse) {
-                    try {
-                        PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.handleUnableToConnectDeviceResponse(deviceResponse, t,
-                                powerUsageHistoryMessageDataContainerDto, PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.responseMessageSender,
-                                deviceResponse, message.getStringProperty(Constants.DOMAIN), message.getStringProperty(Constants.DOMAIN_VERSION), message
-                                        .getJMSType(), message.propertyExists(Constants.IS_SCHEDULED) ? message.getBooleanProperty(Constants.IS_SCHEDULED)
-                                        : false, message.getIntProperty(Constants.RETRY_COUNT));
-                    } catch (final JMSException e) {
-                        LOGGER.error("JMSException", e);
-                    }
-
-                }
-            };
-
-            final GetPowerUsageHistoryDeviceRequest deviceRequest = new GetPowerUsageHistoryDeviceRequest(organisationIdentification, deviceIdentification,
-                    correlationUid, powerUsageHistoryMessageDataContainerDto.getTimePeriod(), powerUsageHistoryMessageDataContainerDto.getHistoryTermType());
-
-            this.deviceService.getPowerUsageHistory(deviceRequest, deviceResponseHandler, ipAddress);
-
+            this.deviceService.getPowerUsageHistory(deviceRequest);
         } catch (final Exception e) {
-            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain, domainVersion, messageType, retryCount);
+            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
+                    domainVersion, messageType, retryCount);
         }
     }
 
-    protected void handleGetPowerUsageHistoryDeviceResponse(final DeviceResponse deviceResponse, final PowerUsageHistoryMessageDataContainer messageData,
-            final DeviceResponseMessageSender responseMessageSender, final String domain, final String domainVersion, final String messageType,
-            final boolean isScheduled, final int retryCount) {
+    @Override
+    public void processSignedOslpEnvelope(final String deviceIdentification,
+            final SignedOslpEnvelopeDto signedOslpEnvelopeDto) {
+
+        final UnsignedOslpEnvelopeDto unsignedOslpEnvelopeDto = signedOslpEnvelopeDto.getUnsignedOslpEnvelopeDto();
+        final OslpEnvelope oslpEnvelope = signedOslpEnvelopeDto.getOslpEnvelope();
+        final String correlationUid = unsignedOslpEnvelopeDto.getCorrelationUid();
+        final String organisationIdentification = unsignedOslpEnvelopeDto.getOrganisationIdentification();
+        final String domain = unsignedOslpEnvelopeDto.getDomain();
+        final String domainVersion = unsignedOslpEnvelopeDto.getDomainVersion();
+        final String messageType = unsignedOslpEnvelopeDto.getMessageType();
+        final String ipAddress = unsignedOslpEnvelopeDto.getIpAddress();
+        final int retryCount = unsignedOslpEnvelopeDto.getRetryCount();
+        final boolean isScheduled = unsignedOslpEnvelopeDto.isScheduled();
+
+        final DeviceResponseHandler deviceResponseHandler = new DeviceResponseHandler() {
+
+            @Override
+            public void handleResponse(final DeviceResponse deviceResponse) {
+                PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this
+                .handleGetPowerUsageHistoryDeviceResponse(deviceResponse, null,
+                        PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.responseMessageSender,
+                        domain, domainVersion, messageType, isScheduled, retryCount);
+            }
+
+            @Override
+            public void handleException(final Throwable t, final DeviceResponse deviceResponse) {
+                PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.handleUnableToConnectDeviceResponse(
+                        deviceResponse, t, null,
+                        PublicLightingGetPowerUsageHistoryRequestMessageProcessor.this.responseMessageSender,
+                        deviceResponse, domain, domainVersion, messageType, isScheduled, retryCount);
+            }
+        };
+
+        try {
+            final PowerUsageHistoryResponseMessageDataContainer powerUsageHistoryResponseMessageDataContainer = (PowerUsageHistoryResponseMessageDataContainer) unsignedOslpEnvelopeDto
+                    .getExtraData();
+            final TimePeriod timePeriod = new TimePeriod(powerUsageHistoryResponseMessageDataContainer.getStartTime(),
+                    powerUsageHistoryResponseMessageDataContainer.getEndTime());
+            final HistoryTermType historyTermType = powerUsageHistoryResponseMessageDataContainer.getHistoryTermType();
+
+            final GetPowerUsageHistoryDeviceRequest deviceRequest = new GetPowerUsageHistoryDeviceRequest(
+                    organisationIdentification, deviceIdentification, correlationUid, timePeriod, historyTermType,
+                    domain, domainVersion, messageType, ipAddress, retryCount, isScheduled);
+
+            this.deviceService.doGetPowerUsageHistory(oslpEnvelope, powerUsageHistoryResponseMessageDataContainer,
+                    deviceRequest, deviceResponseHandler, ipAddress, domain, domainVersion, messageType, retryCount,
+                    isScheduled);
+        } catch (final IOException e) {
+            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
+                    domainVersion, messageType, retryCount);
+        }
+    }
+
+    protected void handleGetPowerUsageHistoryDeviceResponse(final DeviceResponse deviceResponse,
+            final PowerUsageHistoryMessageDataContainer messageData,
+            final DeviceResponseMessageSender responseMessageSender, final String domain, final String domainVersion,
+            final String messageType, final boolean isScheduled, final int retryCount) {
 
         ResponseMessageResultType result = ResponseMessageResultType.OK;
         OsgpException osgpException = null;
@@ -138,18 +178,20 @@ public class PublicLightingGetPowerUsageHistoryRequestMessageProcessor extends D
         try {
             final GetPowerUsageHistoryDeviceResponse response = (GetPowerUsageHistoryDeviceResponse) deviceResponse;
             this.deviceResponseService.handleDeviceMessageStatus(response.getStatus());
-            powerUsageHistoryResponseMessageDataContainerDto = new PowerUsageHistoryResponseMessageDataContainer(response.getPowerUsageHistoryData());
+            powerUsageHistoryResponseMessageDataContainerDto = new PowerUsageHistoryResponseMessageDataContainer(
+                    response.getPowerUsageHistoryData());
             dataObject = powerUsageHistoryResponseMessageDataContainerDto;
         } catch (final Exception e) {
             LOGGER.error("Device Response Exception", e);
             result = ResponseMessageResultType.NOT_OK;
             dataObject = messageData;
-            osgpException= new TechnicalException(ComponentType.UNKNOWN, "Unexpected exception while retrieving response message", e);
+            osgpException = new TechnicalException(ComponentType.UNKNOWN,
+                    "Unexpected exception while retrieving response message", e);
         }
 
-        final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType, deviceResponse.getCorrelationUid(),
-                deviceResponse.getOrganisationIdentification(), deviceResponse.getDeviceIdentification(), result, osgpException, dataObject, isScheduled,
-                retryCount);
+        final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,
+                deviceResponse.getCorrelationUid(), deviceResponse.getOrganisationIdentification(),
+                deviceResponse.getDeviceIdentification(), result, osgpException, dataObject, isScheduled, retryCount);
 
         responseMessageSender.send(responseMessage);
     }

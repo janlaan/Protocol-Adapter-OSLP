@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging;
 
 import javax.jms.JMSException;
@@ -25,11 +32,9 @@ public class OslpLogItemRequestMessageSender {
         LOGGER.debug("Sending OslpLogItemRequestMessage");
 
         this.oslpLogItemRequestsJmsTemplate.send(new MessageCreator() {
-
             @Override
             public Message createMessage(final Session session) throws JMSException {
                 final ObjectMessage objectMessage = session.createObjectMessage();
-
                 objectMessage.setJMSType(Constants.OSLP_LOG_ITEM_REQUEST);
                 objectMessage.setStringProperty(Constants.IS_INCOMING, oslpLogItemRequestMessage.isIncoming()
                         .toString());
@@ -45,10 +50,8 @@ public class OslpLogItemRequestMessageSender {
                 objectMessage.setStringProperty(Constants.IS_VALID, oslpLogItemRequestMessage.isValid().toString());
                 objectMessage.setIntProperty(Constants.PAYLOAD_MESSAGE_SERIALIZED_SIZE,
                         oslpLogItemRequestMessage.getPayloadMessageSerializedSize());
-
                 return objectMessage;
             }
-
         });
     }
 }

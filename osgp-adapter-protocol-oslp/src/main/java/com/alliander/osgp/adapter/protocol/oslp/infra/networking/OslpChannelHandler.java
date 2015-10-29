@@ -1,7 +1,13 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.networking;
 
 import java.io.IOException;
-import java.security.PrivateKey;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -20,15 +26,14 @@ import com.alliander.osgp.adapter.protocol.oslp.domain.entities.OslpDevice;
 import com.alliander.osgp.adapter.protocol.oslp.domain.repositories.OslpDeviceRepository;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpLogItemRequestMessage;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpLogItemRequestMessageSender;
+import com.alliander.osgp.core.db.api.application.services.DeviceDataService;
+import com.alliander.osgp.core.db.api.entities.Device;
 import com.alliander.osgp.oslp.Oslp;
 import com.alliander.osgp.oslp.OslpEnvelope;
 
 public abstract class OslpChannelHandler extends SimpleChannelHandler {
 
     private final Logger logger;
-
-    @Autowired
-    protected PrivateKey privateKey;
 
     @Resource
     protected String oslpSignatureProvider;
@@ -44,15 +49,14 @@ public abstract class OslpChannelHandler extends SimpleChannelHandler {
 
     @Autowired
     private OslpLogItemRequestMessageSender oslpLogItemRequestMessageSender;
-    
+
+    @Autowired
+    private DeviceDataService deviceDataService;
+
     protected final ConcurrentMap<Integer, OslpCallbackHandler> callbackHandlers = new ConcurrentHashMap<>();
 
     protected OslpChannelHandler(final Logger logger) {
         this.logger = logger;
-    }
-
-    public void setPrivateKey(final PrivateKey privateKey) {
-        this.privateKey = privateKey;
     }
 
     public void setProvider(final String provider) {
@@ -103,36 +107,56 @@ public abstract class OslpChannelHandler extends SimpleChannelHandler {
 
         final String deviceUid = Base64.encodeBase64String(message.getDeviceId());
         String deviceIdentification = this.getDeviceIdentificationFromMessage(message.getPayloadMessage());
+        String organisationIdentification = null;
+
         // Assume outgoing messages always valid.
         final boolean isValid = incoming ? message.isValid() : true;
 
         if (StringUtils.isEmpty(deviceIdentification)) {
+            // Getting the deviceIdentification from the oslpDevice instance
             final OslpDevice oslpDevice = this.oslpDeviceRepository.findByDeviceUid(deviceUid);
             if (oslpDevice != null) {
                 deviceIdentification = oslpDevice.getDeviceIdentification();
             }
+
+            // Getting the organisationIdentification from the Device instance
+            final Device device = this.deviceDataService.findDevice(deviceIdentification);
+            if (device != null) {
+                organisationIdentification = device.getOrganisation().getOrganisationIdentification();
+            }
         }
 
-        final OslpLogItemRequestMessage oslpLogItemRequestMessage = new OslpLogItemRequestMessage(null, deviceUid, deviceIdentification, incoming, isValid,
+        final OslpLogItemRequestMessage oslpLogItemRequestMessage = new OslpLogItemRequestMessage(
+                organisationIdentification, deviceUid, deviceIdentification, incoming, isValid,
                 message.getPayloadMessage(), message.getSize());
 
         this.oslpLogItemRequestMessageSender.send(oslpLogItemRequestMessage);
     }
 
     private boolean isConnectionReset(final Throwable e) {
-        return (e != null && e instanceof IOException && e.getMessage() != null && e.getMessage().contains("Connection reset by peer"));
+        return e != null && e instanceof IOException && e.getMessage() != null
+                && e.getMessage().contains("Connection reset by peer");
     }
 
     protected boolean isOslpResponse(final OslpEnvelope envelope) {
-        return envelope.getPayloadMessage().hasRegisterDeviceResponse() || envelope.getPayloadMessage().hasConfirmRegisterDeviceResponse()
-                || envelope.getPayloadMessage().hasStartSelfTestResponse() || envelope.getPayloadMessage().hasStopSelfTestResponse()
-                || envelope.getPayloadMessage().hasUpdateFirmwareResponse() || envelope.getPayloadMessage().hasSetLightResponse()
-                || envelope.getPayloadMessage().hasSetEventNotificationsResponse() || envelope.getPayloadMessage().hasEventNotificationResponse()
-                || envelope.getPayloadMessage().hasSetScheduleResponse() || envelope.getPayloadMessage().hasGetFirmwareVersionResponse()
-                || envelope.getPayloadMessage().hasGetStatusResponse() || envelope.getPayloadMessage().hasResumeScheduleResponse()
-                || envelope.getPayloadMessage().hasSetRebootResponse() || envelope.getPayloadMessage().hasSetTransitionResponse()
-                || envelope.getPayloadMessage().hasSetConfigurationResponse() || envelope.getPayloadMessage().hasGetConfigurationResponse()
-                || envelope.getPayloadMessage().hasGetActualPowerUsageResponse() || envelope.getPayloadMessage().hasGetPowerUsageHistoryResponse();
+        return envelope.getPayloadMessage().hasRegisterDeviceResponse()
+                || envelope.getPayloadMessage().hasConfirmRegisterDeviceResponse()
+                || envelope.getPayloadMessage().hasStartSelfTestResponse()
+                || envelope.getPayloadMessage().hasStopSelfTestResponse()
+                || envelope.getPayloadMessage().hasUpdateFirmwareResponse()
+                || envelope.getPayloadMessage().hasSetLightResponse()
+                || envelope.getPayloadMessage().hasSetEventNotificationsResponse()
+                || envelope.getPayloadMessage().hasEventNotificationResponse()
+                || envelope.getPayloadMessage().hasSetScheduleResponse()
+                || envelope.getPayloadMessage().hasGetFirmwareVersionResponse()
+                || envelope.getPayloadMessage().hasGetStatusResponse()
+                || envelope.getPayloadMessage().hasResumeScheduleResponse()
+                || envelope.getPayloadMessage().hasSetRebootResponse()
+                || envelope.getPayloadMessage().hasSetTransitionResponse()
+                || envelope.getPayloadMessage().hasSetConfigurationResponse()
+                || envelope.getPayloadMessage().hasGetConfigurationResponse()
+                || envelope.getPayloadMessage().hasGetActualPowerUsageResponse()
+                || envelope.getPayloadMessage().hasGetPowerUsageHistoryResponse();
     }
 
     private String getDeviceIdentificationFromMessage(final Oslp.Message message) {

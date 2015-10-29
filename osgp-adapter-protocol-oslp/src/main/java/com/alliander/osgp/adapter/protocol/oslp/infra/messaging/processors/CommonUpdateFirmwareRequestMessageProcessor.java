@@ -1,4 +1,13 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.infra.messaging.processors;
+
+import java.io.IOException;
 
 import javax.jms.JMSException;
 import javax.jms.ObjectMessage;
@@ -8,43 +17,42 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.alliander.osgp.adapter.protocol.oslp.device.DeviceRequest;
 import com.alliander.osgp.adapter.protocol.oslp.device.DeviceResponse;
 import com.alliander.osgp.adapter.protocol.oslp.device.DeviceResponseHandler;
 import com.alliander.osgp.adapter.protocol.oslp.device.FirmwareLocation;
 import com.alliander.osgp.adapter.protocol.oslp.device.requests.UpdateFirmwareDeviceRequest;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageType;
+import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpEnvelopeProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.infra.networking.DeviceService;
-import com.alliander.osgp.adapter.protocol.oslp.services.DeviceResponseService;
+import com.alliander.osgp.oslp.OslpEnvelope;
+import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
+import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
 import com.alliander.osgp.shared.infra.jms.Constants;
 
 /**
  * Class for processing common update firmware request messages
- * 
- * @author CGI
- * 
  */
 @Component("oslpCommonUpdateFirmwareRequestMessageProcessor")
-public class CommonUpdateFirmwareRequestMessageProcessor extends DeviceRequestMessageProcessor {
+public class CommonUpdateFirmwareRequestMessageProcessor extends DeviceRequestMessageProcessor implements
+        OslpEnvelopeProcessor {
     /**
      * Logger for this class
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonUpdateFirmwareRequestMessageProcessor.class);
 
-    public CommonUpdateFirmwareRequestMessageProcessor() {
-        super(DeviceRequestMessageType.UPDATE_FIRMWARE);
-    }
-
     @Autowired
     private DeviceService deviceService;
 
     @Autowired
-    private DeviceResponseService deviceResponseService;
-
-    @Autowired
     private FirmwareLocation firmwareLocation;
 
-    // TODO: the FirmwareLocation class in domain and dto can/must be deleted!
+    public CommonUpdateFirmwareRequestMessageProcessor() {
+        super(DeviceRequestMessageType.UPDATE_FIRMWARE);
+    }
+
+    // IDEA: the FirmwareLocation class in domain and dto can/must be deleted!
     // Or, this
     // setup has to be changed in order to reuse the FirmwareLocation class in
     // the domain!!
@@ -73,7 +81,6 @@ public class CommonUpdateFirmwareRequestMessageProcessor extends DeviceRequestMe
             ipAddress = message.getStringProperty(Constants.IP_ADDRESS);
             isScheduled = message.getBooleanProperty(Constants.IS_SCHEDULED);
             retryCount = message.getIntProperty(Constants.RETRY_COUNT);
-
         } catch (final JMSException e) {
             LOGGER.error("UNRECOVERABLE ERROR, unable to read ObjectMessage instance, giving up.", e);
             LOGGER.debug("correlationUid: {}", correlationUid);
@@ -92,48 +99,62 @@ public class CommonUpdateFirmwareRequestMessageProcessor extends DeviceRequestMe
 
             LOGGER.info("Calling DeviceService function: {} for domain: {} {}", messageType, domain, domainVersion);
 
-            final DeviceResponseHandler deviceResponseHandler = new DeviceResponseHandler() {
+            final UpdateFirmwareDeviceRequest deviceRequest = new UpdateFirmwareDeviceRequest(
+                    organisationIdentification, deviceIdentification, correlationUid,
+                    this.firmwareLocation.getDomain(), this.firmwareLocation.getFullPath(firmwareIdentification),
+                    domain, domainVersion, messageType, ipAddress, retryCount, isScheduled);
 
-                @Override
-                public void handleResponse(final DeviceResponse deviceResponse) {
-                    try {
-                        CommonUpdateFirmwareRequestMessageProcessor.this.handleScheduledEmptyDeviceResponse(deviceResponse,
-                                CommonUpdateFirmwareRequestMessageProcessor.this.responseMessageSender, message.getStringProperty(Constants.DOMAIN), message
-                                        .getStringProperty(Constants.DOMAIN_VERSION), message.getJMSType(),
-                                message.propertyExists(Constants.IS_SCHEDULED) ? message.getBooleanProperty(Constants.IS_SCHEDULED) : false, message
-                                        .getIntProperty(Constants.RETRY_COUNT));
-                    } catch (final JMSException e) {
-                        LOGGER.error("JMSException", e);
-                    }
-
-                }
-
-                @Override
-                public void handleException(final Throwable t, final DeviceResponse deviceResponse) {
-                    try {
-                        CommonUpdateFirmwareRequestMessageProcessor.this.handleUnableToConnectDeviceResponse(deviceResponse, t, null,
-                                CommonUpdateFirmwareRequestMessageProcessor.this.responseMessageSender, deviceResponse,
-                                message.getStringProperty(Constants.DOMAIN), message.getStringProperty(Constants.DOMAIN_VERSION), message.getJMSType(),
-                                message.propertyExists(Constants.IS_SCHEDULED) ? message.getBooleanProperty(Constants.IS_SCHEDULED) : false,
-                                message.getIntProperty(Constants.RETRY_COUNT));
-                    } catch (final JMSException e) {
-                        LOGGER.error("JMSException", e);
-                    }
-
-                }
-            };
-
-            final UpdateFirmwareDeviceRequest deviceRequest = new UpdateFirmwareDeviceRequest(organisationIdentification, deviceIdentification, correlationUid,
-                    this.firmwareLocation.getDomain(), this.firmwareLocation.getFullPath(firmwareIdentification));
-
-            this.deviceService.updateFirmware(deviceRequest, deviceResponseHandler, ipAddress);
-
+            this.deviceService.updateFirmware(deviceRequest);
         } catch (final Exception e) {
-            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain, domainVersion, messageType, retryCount);
+            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
+                    domainVersion, messageType, retryCount);
         }
     }
 
-    // TODO: method added for testing, make this a protected method
+    @Override
+    public void processSignedOslpEnvelope(final String deviceIdentification,
+            final SignedOslpEnvelopeDto signedOslpEnvelopeDto) {
+
+        final UnsignedOslpEnvelopeDto unsignedOslpEnvelopeDto = signedOslpEnvelopeDto.getUnsignedOslpEnvelopeDto();
+        final OslpEnvelope oslpEnvelope = signedOslpEnvelopeDto.getOslpEnvelope();
+        final String correlationUid = unsignedOslpEnvelopeDto.getCorrelationUid();
+        final String organisationIdentification = unsignedOslpEnvelopeDto.getOrganisationIdentification();
+        final String domain = unsignedOslpEnvelopeDto.getDomain();
+        final String domainVersion = unsignedOslpEnvelopeDto.getDomainVersion();
+        final String messageType = unsignedOslpEnvelopeDto.getMessageType();
+        final String ipAddress = unsignedOslpEnvelopeDto.getIpAddress();
+        final int retryCount = unsignedOslpEnvelopeDto.getRetryCount();
+        final boolean isScheduled = unsignedOslpEnvelopeDto.isScheduled();
+
+        final DeviceResponseHandler deviceResponseHandler = new DeviceResponseHandler() {
+
+            @Override
+            public void handleResponse(final DeviceResponse deviceResponse) {
+                CommonUpdateFirmwareRequestMessageProcessor.this.handleEmptyDeviceResponse(deviceResponse,
+                        CommonUpdateFirmwareRequestMessageProcessor.this.responseMessageSender, domain, domainVersion,
+                        messageType, retryCount);
+            }
+
+            @Override
+            public void handleException(final Throwable t, final DeviceResponse deviceResponse) {
+                CommonUpdateFirmwareRequestMessageProcessor.this.handleUnableToConnectDeviceResponse(deviceResponse, t,
+                        null, CommonUpdateFirmwareRequestMessageProcessor.this.responseMessageSender, deviceResponse,
+                        domain, domainVersion, messageType, isScheduled, retryCount);
+            }
+        };
+
+        final DeviceRequest deviceRequest = new DeviceRequest(organisationIdentification, deviceIdentification,
+                correlationUid);
+
+        try {
+            this.deviceService.doUpdateFirmware(oslpEnvelope, deviceRequest, deviceResponseHandler, ipAddress);
+        } catch (final IOException e) {
+            this.handleError(e, correlationUid, organisationIdentification, deviceIdentification, domain,
+                    domainVersion, messageType, retryCount);
+        }
+    }
+
+    // Method added for testing, make this a protected method if needed
     public void setFirmwareLocation(final FirmwareLocation firmwareLocation) {
         this.firmwareLocation = firmwareLocation;
     }

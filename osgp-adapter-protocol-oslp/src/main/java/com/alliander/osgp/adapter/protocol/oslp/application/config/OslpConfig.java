@@ -1,10 +1,15 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.application.config;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.concurrent.Executors;
 
@@ -39,7 +44,6 @@ import com.alliander.osgp.adapter.protocol.oslp.infra.networking.OslpSecurityHan
 import com.alliander.osgp.oslp.OslpDecoder;
 import com.alliander.osgp.oslp.OslpEncoder;
 import com.alliander.osgp.oslp.OslpUtils;
-import com.alliander.osgp.shared.security.CertificateHelper;
 
 /**
  * An application context Java configuration class. The usage of Java
@@ -53,7 +57,6 @@ public class OslpConfig {
     private static final String PROPERTY_NAME_OSLP_PORT_CLIENT = "oslp.port.client";
     private static final String PROPERTY_NAME_OSLP_PORT_CLIENTLOCAL = "oslp.port.clientlocal";
     private static final String PROPERTY_NAME_OSLP_PORT_SERVER = "oslp.port.server";
-    private static final String PROPERTY_NAME_OSLP_SECURITY_SIGNKEY_PATH = "oslp.security.signkey.path";
     private static final String PROPERTY_NAME_OSLP_SECURITY_KEYTYPE = "oslp.security.keytype";
     private static final String PROPERTY_NAME_OSLP_SECURITY_SIGNATURE = "oslp.security.signature";
     private static final String PROPERTY_NAME_OSLP_SECURITY_PROVIDER = "oslp.security.provider";
@@ -161,27 +164,6 @@ public class OslpConfig {
         return new OslpDecoder(this.oslpSignature(), this.oslpSignatureProvider());
     }
 
-    /**
-     * @return
-     * @throws ProtocolAdapterException
-     * @throws IOException
-     * @throws InvalidKeySpecException
-     * @throws NoSuchAlgorithmException
-     */
-    @Bean
-    public PrivateKey oslpPrivateKey() throws ProtocolAdapterException {
-        try {
-            return CertificateHelper.createPrivateKey(
-                    this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_SIGNKEY_PATH),
-                    this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE),
-                    this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_PROVIDER));
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException | NoSuchProviderException e) {
-            final String msg = "Error creating private key bean";
-            LOGGER.error(msg, e);
-            throw new ProtocolAdapterException(msg, e);
-        }
-    }
-
     @Bean
     public String oslpKeyType() {
         return this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE);
@@ -252,6 +234,11 @@ public class OslpConfig {
     }
 
     /**
+     * Why is this class instantiated? The class only offers static functions.
+     * SonarQube issue: Classes with only "static" methods should not be
+     * instantiated squid:S2440
+     * http://54.77.62.182/sonarqube/coding_rules#rule_key=squid%3AS2440
+     *
      * @return
      */
     @Bean

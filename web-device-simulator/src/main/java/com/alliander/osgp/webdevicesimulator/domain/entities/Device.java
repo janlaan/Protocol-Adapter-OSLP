@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.webdevicesimulator.domain.entities;
 
 import java.security.SecureRandom;
@@ -121,11 +128,14 @@ public class Device extends AbstractEntity {
     @Column(nullable = true)
     private Integer randomPlatform;
 
+    @Column(nullable = false)
+    private boolean hasEveningMorningBurner;
+
     @Transient
     private final SecureRandom random = new SecureRandom();
 
     @Transient
-    private final Integer sequenceNumberMaximum = 65535;
+    private static final Integer sequenceNumberMaximum = 65535;
 
     public Device() {
         // Default constructor
@@ -162,7 +172,7 @@ public class Device extends AbstractEntity {
 
     /**
      * Sets ip address of device
-     * 
+     *
      * @param ipaddress
      */
     public void setIpAddress(final String ipaddress) {
@@ -312,7 +322,7 @@ public class Device extends AbstractEntity {
 
     /**
      * Generate a secure random number within range 0 to 65535.
-     * 
+     *
      * @return The random number.
      */
     public Integer doGenerateRandomNumber() {
@@ -321,7 +331,7 @@ public class Device extends AbstractEntity {
 
     /**
      * Create default configuration for a device (based on type).
-     * 
+     *
      * @return default configuration
      */
     private List<DeviceOutputSetting> createDefaultConfiguration() {
@@ -334,5 +344,9 @@ public class Device extends AbstractEntity {
         }
 
         return defaultConfiguration;
+    }
+
+    public boolean getHasEveningMorningBurner() {
+        return this.hasEveningMorningBurner;
     }
 }

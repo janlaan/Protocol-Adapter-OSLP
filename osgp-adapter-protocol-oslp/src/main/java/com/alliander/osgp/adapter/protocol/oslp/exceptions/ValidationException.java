@@ -1,7 +1,15 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.exceptions;
 
 import java.util.Set;
 
+import javax.persistence.Transient;
 import javax.validation.ConstraintViolation;
 
 import org.apache.commons.lang3.StringUtils;
@@ -15,14 +23,17 @@ public class ValidationException extends ProtocolAdapterException {
 
     private static final String DEFAULT_MESSAGE = "Validation Exception";
 
-    private Set<? extends ConstraintViolation<?>> constraintViolations;
+    @Transient
+    private final Set<? extends ConstraintViolation<?>> constraintViolations;
 
     public ValidationException() {
         super(DEFAULT_MESSAGE);
+        this.constraintViolations = null;
     }
 
     public ValidationException(final String message) {
         super(message);
+        this.constraintViolations = null;
     }
 
     public ValidationException(final Set<? extends ConstraintViolation<?>> constraintViolations) {

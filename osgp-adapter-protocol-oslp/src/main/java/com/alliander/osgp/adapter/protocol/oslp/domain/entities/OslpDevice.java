@@ -1,3 +1,10 @@
+/**
+ * Copyright 2015 Smart Society Services B.V.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package com.alliander.osgp.adapter.protocol.oslp.domain.entities;
 
 import java.net.InetAddress;
@@ -60,6 +67,12 @@ public class OslpDevice extends AbstractEntity {
 
     public OslpDevice() {
         // Default constructor
+    }
+
+    public OslpDevice(final String deviceUid, final String deviceIdentification, final String deviceType) {
+        this.deviceUid = deviceUid;
+        this.deviceIdentification = deviceIdentification;
+        this.deviceType = deviceType;
     }
 
     public OslpDevice(final String deviceUid, final String deviceIdentification, final String deviceType,
@@ -142,9 +155,7 @@ public class OslpDevice extends AbstractEntity {
         if (o == null || this.getClass() != o.getClass()) {
             return false;
         }
-
         final OslpDevice device = (OslpDevice) o;
-
         if (this.deviceIdentification != null ? !this.deviceIdentification.equals(device.deviceIdentification)
                 : device.deviceIdentification != null) {
             return false;
@@ -155,7 +166,6 @@ public class OslpDevice extends AbstractEntity {
         if (this.deviceUid != null ? !this.deviceUid.equals(device.deviceUid) : device.deviceUid != null) {
             return false;
         }
-
         return true;
     }
 
