@@ -23,7 +23,7 @@ import com.alliander.osgp.adapter.protocol.oslp.elster.device.responses.GetConfi
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.OslpEnvelopeProcessor;
-import com.alliander.osgp.dto.valueobjects.Configuration;
+import com.alliander.osgp.dto.valueobjects.ConfigurationDto;
 import com.alliander.osgp.oslp.OslpEnvelope;
 import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
 import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
@@ -145,7 +145,7 @@ OslpEnvelopeProcessor {
 
         ResponseMessageResultType result = ResponseMessageResultType.OK;
         OsgpException osgpException = null;
-        Configuration configuration = null;
+        ConfigurationDto configuration = null;
 
         try {
             final GetConfigurationDeviceResponse response = (GetConfigurationDeviceResponse) deviceResponse;
@@ -155,7 +155,7 @@ OslpEnvelopeProcessor {
             LOGGER.error("Device Response Exception", e);
             result = ResponseMessageResultType.NOT_OK;
             osgpException = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while getting device configuration", e);
         }
 
         final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,

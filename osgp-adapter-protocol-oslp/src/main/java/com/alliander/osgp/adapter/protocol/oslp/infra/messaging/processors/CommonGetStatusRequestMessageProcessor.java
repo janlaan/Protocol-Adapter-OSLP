@@ -23,7 +23,7 @@ import com.alliander.osgp.adapter.protocol.oslp.device.responses.GetStatusDevice
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpEnvelopeProcessor;
-import com.alliander.osgp.dto.valueobjects.DeviceStatus;
+import com.alliander.osgp.dto.valueobjects.DeviceStatusDto;
 import com.alliander.osgp.oslp.OslpEnvelope;
 import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
 import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
@@ -146,7 +146,7 @@ public class CommonGetStatusRequestMessageProcessor extends DeviceRequestMessage
 
         ResponseMessageResultType result = ResponseMessageResultType.OK;
         OsgpException osgpException = null;
-        DeviceStatus status = null;
+        DeviceStatusDto status = null;
 
         try {
             final GetStatusDeviceResponse response = (GetStatusDeviceResponse) deviceResponse;
@@ -155,7 +155,7 @@ public class CommonGetStatusRequestMessageProcessor extends DeviceRequestMessage
             LOGGER.error("Device Response Exception", e);
             result = ResponseMessageResultType.NOT_OK;
             osgpException = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while getting device status", e);
         }
 
         final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,

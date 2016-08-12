@@ -17,19 +17,19 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alliander.osgp.dto.valueobjects.Configuration;
+import com.alliander.osgp.dto.valueobjects.ConfigurationDto;
 import com.alliander.osgp.oslp.Oslp;
 import com.alliander.osgp.oslp.Oslp.SetConfigurationRequest;
 import com.google.protobuf.ByteString;
 
 public class ConfigurationToOslpSetConfigurationRequestConverter extends
-        CustomConverter<Configuration, Oslp.SetConfigurationRequest> {
+        CustomConverter<ConfigurationDto, Oslp.SetConfigurationRequest> {
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(ConfigurationToOslpSetConfigurationRequestConverter.class);
 
     @Override
-    public SetConfigurationRequest convert(final Configuration source,
+    public SetConfigurationRequest convert(final ConfigurationDto source,
             final Type<? extends Oslp.SetConfigurationRequest> destinationType) {
 
         final Oslp.SetConfigurationRequest.Builder setConfigurationRequest = Oslp.SetConfigurationRequest.newBuilder();
@@ -83,9 +83,13 @@ public class ConfigurationToOslpSetConfigurationRequestConverter extends
         if (source.getCommunicationTimeout() != null) {
             setConfigurationRequest.setCommunicationTimeout(source.getCommunicationTimeout());
         }
-        if (source.getDeviceFixIpValue() != null) {
+        if (source.getDeviceFixedIp() != null) {
             setConfigurationRequest.setDeviceFixIpValue(this.convertTextualIpAddressToByteString(source
-                    .getDeviceFixIpValue()));
+                    .getDeviceFixedIp().getIpAddress()));
+            setConfigurationRequest.setNetMask(this.convertTextualIpAddressToByteString(source.getDeviceFixedIp()
+                    .getNetMask()));
+            setConfigurationRequest.setGateWay(this.convertTextualIpAddressToByteString(source.getDeviceFixedIp()
+                    .getGateWay()));
         }
         if (source.isDhcpEnabled() != null) {
             setConfigurationRequest.setIsDhcpEnabled(source.isDhcpEnabled());
@@ -127,7 +131,7 @@ public class ConfigurationToOslpSetConfigurationRequestConverter extends
 
     private ByteString convertTextualIpAddressToByteString(final String ipAddress) {
         try {
-            LOGGER.info("ipAddress: {}", ipAddress);
+            LOGGER.info("textual IP address or netmask: {}", ipAddress);
             final InetAddress inetAddress = InetAddress.getByName(ipAddress);
             final byte[] bytes = inetAddress.getAddress();
             LOGGER.info("bytes.length: {}", bytes.length);
@@ -145,14 +149,12 @@ public class ConfigurationToOslpSetConfigurationRequestConverter extends
     /*
      * SummerTimeDetails/WinterTimeDetails string: MMWHHmi
      *
-     * where: (note, north hemisphere summer begins at the end of march)
-     * MM: month
-     * W: day of the week (0- Monday, 6- Sunday)
-     * HH: hour of the changing time
-     * mi: minutes of the changing time
+     * where: (note, north hemisphere summer begins at the end of march) MM:
+     * month W: day of the week (0- Monday, 6- Sunday) HH: hour of the changing
+     * time mi: minutes of the changing time
      *
-     * Default value for summer time: 0360100
-     * Default value for summer time: 1060200
+     * Default value for summer time: 0360100 Default value for summer time:
+     * 1060200
      */
     // @formatter:on
     private String convertSummerTimeWinterTimeDetails(final DateTime dateTime) {

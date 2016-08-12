@@ -26,6 +26,7 @@ import com.alliander.osgp.adapter.protocol.oslp.device.responses.GetFirmwareVers
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.infra.messaging.OslpEnvelopeProcessor;
+import com.alliander.osgp.dto.valueobjects.FirmwareModuleType;
 import com.alliander.osgp.dto.valueobjects.FirmwareVersionDto;
 import com.alliander.osgp.oslp.OslpEnvelope;
 import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
@@ -43,7 +44,7 @@ import com.alliander.osgp.shared.infra.jms.ResponseMessageSender;
  */
 @Component("oslpCommonGetFirmwareRequestMessageProcessor")
 public class CommonGetFirmwareRequestMessageProcessor extends DeviceRequestMessageProcessor implements
-OslpEnvelopeProcessor {
+        OslpEnvelopeProcessor {
     /**
      * Logger for this class
      */
@@ -154,12 +155,12 @@ OslpEnvelopeProcessor {
             final GetFirmwareVersionDeviceResponse response = (GetFirmwareVersionDeviceResponse) deviceResponse;
             final String firmwareVersion = response.getFirmwareVersion();
 
-            firmwareVersions.add(new FirmwareVersionDto("FIRMWARE", firmwareVersion));
+            firmwareVersions.add(new FirmwareVersionDto(FirmwareModuleType.FUNCTIONAL, firmwareVersion));
         } catch (final Exception e) {
             LOGGER.error("Device Response Exception", e);
             result = ResponseMessageResultType.NOT_OK;
             osgpException = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while getting device firmware version", e);
         }
 
         final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,

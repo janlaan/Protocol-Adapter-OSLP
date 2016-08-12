@@ -18,9 +18,9 @@ import com.alliander.osgp.adapter.protocol.oslp.elster.domain.entities.OslpDevic
 import com.alliander.osgp.adapter.protocol.oslp.elster.exceptions.ProtocolAdapterException;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceResponseMessageSender;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.OsgpRequestMessageSender;
-import com.alliander.osgp.dto.valueobjects.DeviceFunction;
-import com.alliander.osgp.dto.valueobjects.EventNotification;
-import com.alliander.osgp.dto.valueobjects.EventType;
+import com.alliander.osgp.dto.valueobjects.DeviceFunctionDto;
+import com.alliander.osgp.dto.valueobjects.EventNotificationDto;
+import com.alliander.osgp.dto.valueobjects.EventTypeDto;
 import com.alliander.osgp.shared.exceptionhandling.ComponentType;
 import com.alliander.osgp.shared.exceptionhandling.OsgpException;
 import com.alliander.osgp.shared.exceptionhandling.TechnicalException;
@@ -70,12 +70,12 @@ public class DeviceManagementService {
         LOGGER.info("addEventNotification called for device: {} with eventType: {}, description: {} and index: {}",
                 oslpDevice.getDeviceIdentification(), eventType, description, index);
 
-        final EventNotification eventNotification = new EventNotification(deviceUid, EventType.valueOf(eventType),
+        final EventNotificationDto eventNotification = new EventNotificationDto(deviceUid, EventTypeDto.valueOf(eventType),
                 description, index);
         final RequestMessage requestMessage = new RequestMessage("no-correlationUid", "no-organisation",
                 oslpDevice.getDeviceIdentification(), eventNotification);
 
-        this.osgpRequestMessageSender.send(requestMessage, DeviceFunction.ADD_EVENT_NOTIFICATION.name());
+        this.osgpRequestMessageSender.send(requestMessage, DeviceFunctionDto.ADD_EVENT_NOTIFICATION.name());
     }
 
     // === UPDATE KEY ===
@@ -106,7 +106,7 @@ public class DeviceManagementService {
         } catch (final Exception e) {
             LOGGER.error("Unexpected exception during updateKey", e);
             final TechnicalException ex = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while updating key", e);
 
             this.sendResponseMessage(domain, domainVersion, messageType, correlationUid, organisationIdentification,
                     deviceIdentification, ResponseMessageResultType.NOT_OK, ex, responseMessageSender);
@@ -138,7 +138,7 @@ public class DeviceManagementService {
         } catch (final Exception e) {
             LOGGER.error("Unexpected exception during revokeKey", e);
             final TechnicalException ex = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while revoking key", e);
             this.sendResponseMessage(domain, domainVersion, messageType, correlationUid, organisationIdentification,
                     deviceIdentification, ResponseMessageResultType.NOT_OK, ex, responseMessageSender);
         }

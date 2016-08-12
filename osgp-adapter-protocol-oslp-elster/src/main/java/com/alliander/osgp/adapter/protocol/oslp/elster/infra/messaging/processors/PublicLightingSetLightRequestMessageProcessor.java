@@ -16,14 +16,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.alliander.osgp.adapter.protocol.oslp.elster.device.DeviceMessageStatus;
 import com.alliander.osgp.adapter.protocol.oslp.elster.device.DeviceRequest;
 import com.alliander.osgp.adapter.protocol.oslp.elster.device.DeviceResponse;
 import com.alliander.osgp.adapter.protocol.oslp.elster.device.DeviceResponseHandler;
 import com.alliander.osgp.adapter.protocol.oslp.elster.device.requests.SetLightDeviceRequest;
+import com.alliander.osgp.adapter.protocol.oslp.elster.device.responses.EmptyDeviceResponse;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.OslpEnvelopeProcessor;
-import com.alliander.osgp.dto.valueobjects.LightValueMessageDataContainer;
+import com.alliander.osgp.dto.valueobjects.LightValueMessageDataContainerDto;
 import com.alliander.osgp.oslp.OslpEnvelope;
 import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
 import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
@@ -34,7 +36,7 @@ import com.alliander.osgp.shared.infra.jms.Constants;
  */
 @Component("oslpPublicLightingSetLightRequestMessageProcessor")
 public class PublicLightingSetLightRequestMessageProcessor extends DeviceRequestMessageProcessor implements
-        OslpEnvelopeProcessor {
+OslpEnvelopeProcessor {
     /**
      * Logger for this class
      */
@@ -82,7 +84,7 @@ public class PublicLightingSetLightRequestMessageProcessor extends DeviceRequest
         }
 
         try {
-            final LightValueMessageDataContainer lightValueMessageDataContainer = (LightValueMessageDataContainer) message
+            final LightValueMessageDataContainerDto lightValueMessageDataContainer = (LightValueMessageDataContainerDto) message
                     .getObject();
 
             LOGGER.info("Calling DeviceService function: {} for domain: {} {}", messageType, domain, domainVersion);
@@ -117,9 +119,17 @@ public class PublicLightingSetLightRequestMessageProcessor extends DeviceRequest
 
             @Override
             public void handleResponse(final DeviceResponse deviceResponse) {
-                PublicLightingSetLightRequestMessageProcessor.this.handleEmptyDeviceResponse(deviceResponse,
-                        PublicLightingSetLightRequestMessageProcessor.this.responseMessageSender, domain,
-                        domainVersion, messageType, retryCount);
+                if (((EmptyDeviceResponse) deviceResponse).getStatus().equals(DeviceMessageStatus.OK)) {
+                    // If the response is OK, just log it. The resumeSchedule()
+                    // function will be called next.
+                    LOGGER.info("setLight() successful for device : {}", deviceResponse.getDeviceIdentification());
+                } else {
+                    // If the response is not OK, send a response message to the
+                    // responses queue.
+                    PublicLightingSetLightRequestMessageProcessor.this.handleEmptyDeviceResponse(deviceResponse,
+                            PublicLightingSetLightRequestMessageProcessor.this.responseMessageSender, domain,
+                            domainVersion, messageType, retryCount);
+                }
             }
 
             @Override
@@ -132,7 +142,7 @@ public class PublicLightingSetLightRequestMessageProcessor extends DeviceRequest
         };
 
         final DeviceRequest deviceRequest = new DeviceRequest(organisationIdentification, deviceIdentification,
-                correlationUid);
+                correlationUid, domain, domainVersion, messageType, ipAddress, retryCount, isScheduled);
 
         try {
             this.deviceService.doSetLight(oslpEnvelope, deviceRequest, deviceResponseHandler, ipAddress);

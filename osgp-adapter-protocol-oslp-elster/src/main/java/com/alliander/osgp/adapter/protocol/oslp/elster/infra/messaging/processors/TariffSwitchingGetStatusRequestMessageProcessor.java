@@ -24,8 +24,8 @@ import com.alliander.osgp.adapter.protocol.oslp.elster.device.responses.GetStatu
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageProcessor;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.DeviceRequestMessageType;
 import com.alliander.osgp.adapter.protocol.oslp.elster.infra.messaging.OslpEnvelopeProcessor;
-import com.alliander.osgp.dto.valueobjects.DeviceStatus;
-import com.alliander.osgp.dto.valueobjects.DomainType;
+import com.alliander.osgp.dto.valueobjects.DeviceStatusDto;
+import com.alliander.osgp.dto.valueobjects.DomainTypeDto;
 import com.alliander.osgp.oslp.OslpEnvelope;
 import com.alliander.osgp.oslp.SignedOslpEnvelopeDto;
 import com.alliander.osgp.oslp.UnsignedOslpEnvelopeDto;
@@ -92,7 +92,7 @@ public class TariffSwitchingGetStatusRequestMessageProcessor extends DeviceReque
         LOGGER.info("Calling DeviceService function: {} for domain: {} {}", messageType, domain, domainVersion);
 
         final GetStatusDeviceRequest deviceRequest = new GetStatusDeviceRequest(organisationIdentification,
-                deviceIdentification, correlationUid, DomainType.TARIFF_SWITCHING, domain, domainVersion, messageType,
+                deviceIdentification, correlationUid, DomainTypeDto.TARIFF_SWITCHING, domain, domainVersion, messageType,
                 ipAddress, retryCount, isScheduled);
 
         this.deviceService.getStatus(deviceRequest);
@@ -149,7 +149,7 @@ public class TariffSwitchingGetStatusRequestMessageProcessor extends DeviceReque
 
         ResponseMessageResultType result = ResponseMessageResultType.OK;
         OsgpException osgpException = null;
-        DeviceStatus status = null;
+        DeviceStatusDto status = null;
 
         try {
             final GetStatusDeviceResponse response = (GetStatusDeviceResponse) deviceResponse;
@@ -158,7 +158,7 @@ public class TariffSwitchingGetStatusRequestMessageProcessor extends DeviceReque
             LOGGER.error("Device Response Exception", e);
             result = ResponseMessageResultType.NOT_OK;
             osgpException = new TechnicalException(ComponentType.UNKNOWN,
-                    "Unexpected exception while retrieving response message", e);
+                    "Exception occurred while getting device status", e);
         }
 
         final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,
