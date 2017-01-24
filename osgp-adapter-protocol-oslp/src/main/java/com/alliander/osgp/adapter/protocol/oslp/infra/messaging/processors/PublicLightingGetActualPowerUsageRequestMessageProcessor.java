@@ -141,15 +141,6 @@ public class PublicLightingGetActualPowerUsageRequestMessageProcessor extends De
 
             @Override
             public void handleResponse(final DeviceResponse deviceResponse) {
-                // Note: The commented code below could be used for requests
-                // where the response has only 'OK'
-                // PublicLightingGetActualPowerUsageRequestMessageProcessor.this.handleEmptyDeviceResponse(deviceResponse,
-                // PublicLightingGetActualPowerUsageRequestMessageProcessor.this.responseMessageSender,
-                // domain,
-                // domainVersion, messageType, retryCount);
-
-                // Note: The commented code below is used for requests where the
-                // response contains data instead of only 'OK'
                 PublicLightingGetActualPowerUsageRequestMessageProcessor.this.handleGetActualPowerUsageDeviceResponse(
                         deviceResponse,
                         PublicLightingGetActualPowerUsageRequestMessageProcessor.this.responseMessageSender, domain,
