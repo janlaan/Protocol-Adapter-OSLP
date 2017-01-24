@@ -94,7 +94,6 @@
     <guava.version>18.0</guava.version>
     <license.maven.plugin>2.11</license.maven.plugin>
     <hikaricp.version>2.4.0</hikaricp.version>
-    <maven.javadoc.version>2.10.4</maven.javadoc.version>
   </properties>
 
   <repositories>
@@ -522,14 +521,6 @@
           <fork>true</fork>
           <source>${java.version}</source>
           <target>${java.version}</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>${maven.javadoc.version}</version>
-        <configuration>
-          <additionalparam>-Xdoclint:none</additionalparam>
         </configuration>
       </plugin>
     </plugins>
