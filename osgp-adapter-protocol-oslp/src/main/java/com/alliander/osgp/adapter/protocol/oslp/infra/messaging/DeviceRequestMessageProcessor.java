@@ -91,9 +91,8 @@ public abstract class DeviceRequestMessageProcessor implements MessageProcessor 
         ResponseMessageResultType result = ResponseMessageResultType.OK;
         OsgpException ex = null;
 
-        EmptyDeviceResponse response = null;
         try {
-            response = (EmptyDeviceResponse) deviceResponse;
+            final EmptyDeviceResponse response = (EmptyDeviceResponse) deviceResponse;
             this.deviceResponseService.handleDeviceMessageStatus(response.getStatus());
         } catch (final OsgpException e) {
             LOGGER.error("Device Response Exception", e);
@@ -101,7 +100,6 @@ public abstract class DeviceRequestMessageProcessor implements MessageProcessor 
             ex = e;
         }
 
-        @SuppressWarnings("deprecation")
         final ProtocolResponseMessage responseMessage = new ProtocolResponseMessage(domain, domainVersion, messageType,
                 deviceResponse.getCorrelationUid(), deviceResponse.getOrganisationIdentification(),
                 deviceResponse.getDeviceIdentification(), result, ex, null, retryCount);
