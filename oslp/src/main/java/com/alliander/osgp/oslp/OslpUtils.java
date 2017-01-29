@@ -26,7 +26,7 @@ import com.google.protobuf.ByteString;
 /**
  * Utility methods to ease usage of OSLP.
  */
-public class OslpUtils {
+public final class OslpUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OslpUtils.class);
 
@@ -45,8 +45,8 @@ public class OslpUtils {
      */
     public static final String FALLBACK_DIGEST = "SHA-512";
 
-    public OslpUtils() {
-        // Public constructor.
+    private OslpUtils() {
+        // Empty constructor for static helper class.
     }
 
     /**
@@ -155,11 +155,21 @@ public class OslpUtils {
             return validateEncryptedHash(message, securityKey, publicKey);
         }
 
+        // Using ECDSA as signature
         final Signature signatureBuilder = Signature.getInstance(signature, provider);
         signatureBuilder.initVerify(publicKey);
         signatureBuilder.update(message);
 
-        return signatureBuilder.verify(securityKey);
+        // Fix for https://bugs.openjdk.java.net/browse/JDK-8161571
+        // Read 2nd byte as length indicator for the actual signature bytes, include 2 bytes for 1st 2 bytes
+        int signatureLength = securityKey[1]+2;
+        if (signatureLength > securityKey.length) {
+            throw new GeneralSecurityException("Size indicator in ASN.1 DSA signature to large [" + signatureLength + "]");
+        }
+
+        // Truncate the string to actual ASN.1 DSA length, removing padding
+        byte[] truncated = Arrays.copyOf(securityKey, signatureLength);
+        return signatureBuilder.verify(truncated);
     }
 
     private static byte[] createEncryptedHash(final byte[] message, final PrivateKey privateKey)
