@@ -89,8 +89,8 @@ public class OslpGetConfigurationResponseToConfigurationConverter extends
         configuration.setCommunicationNumberOfRetries(source.getCommunicationNumberOfRetries());
         configuration.setCommunicationPauseTimeBetweenConnectionTrials(source
                 .getCommunicationPauseTimeBetweenConnectionTrials());
-        if (source.getOspgIpAddress() != null && !source.getOspgIpAddress().isEmpty()) {
-            configuration.setOsgpIpAddress(this.convertIpAddress(source.getOspgIpAddress()));
+        if (source.getOsgpIpAddress() != null && !source.getOsgpIpAddress().isEmpty()) {
+            configuration.setOsgpIpAddress(this.convertIpAddress(source.getOsgpIpAddress()));
         }
         configuration.setOsgpPortNumber(source.getOsgpPortNumber());
         configuration.setTestButtonEnabled(source.getIsTestButtonEnabled());

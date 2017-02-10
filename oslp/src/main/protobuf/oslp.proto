@@ -144,7 +144,7 @@ message GetStatusResponse {
     optional uint32 startupCounter = 17;               // Hardware - The startup counter.
     optional string bootLoaderVersion = 18;            // Software - The boot loader version.
     optional string firmwareVersion = 19;              // Software - The firmware version.
-    optional bytes currentConfigurationBackUsed = 20; // [(nanopb).max_size = 6]; // Software - The current configuration bank in use.
+    optional bytes currentConfigurationBankUsed = 20; // [(nanopb).max_size = 1]; // Software - The current configuration bank in use.
     optional string name = 21;                         // Device - The name of this device.
     optional string currentTime = 22;                  // Device - Not UTC, the time used in timing operations (adjusted "offset" + summer timing). YYYYMMDDhhmmss format.
     optional string currentIp = 23;                    // Device - The current IP address of this device.
@@ -224,7 +224,7 @@ message SetConfigurationRequest {
     optional uint32 communicationTimeout = 14 [default = 20];                            // Communication Timeouts (seconds) (wait for answer, socket establish, or server response = comm watchdog for local mode).
     optional uint32 communicationNumberOfRetries = 15 [default = 3];                     // Communication number of retries.
     optional uint32 communicationPauseTimeBetweenConnectionTrials = 16 [default = 60];   // Time between communication attempts.
-    optional bytes ospgIpAddress = 17; // [(nanopb).max_count = 4];                      // The IP address of the platform.
+    optional bytes osgpIpAddress = 17; // [(nanopb).max_count = 4];                      // The IP address of the platform.
     optional uint32 osgpPortNumber = 18;                                                 // The port number of the platform.
     optional bool isTestButtonEnabled = 19 [default = true];                             // Is the test button enabled for this device?
     optional bool isAutomaticSummerTimingEnabled = 20 [default = true];                  // Is the automatic summer timing enabled for this device?
@@ -233,8 +233,8 @@ message SetConfigurationRequest {
     repeated uint32 switchingDelay = 23; // [(nanopb).max_count = 4];                    // Switching delay (seconds), array of 4 values. Default 0, 0, 0, 0.
     repeated RelayMatrix relayLinking = 24;                                              // Relay linking is a software linking, to may link each relay with each other relay. It is a matrix. Example, if relay 1 is linked with relay 3, if relay 1 will be switched (by OSGP or local by internal scheduler), the relay 3 will switch automatically (on or off, as it set) without new command.
     optional bool relayRefreshing = 25 [default = true];                                 // Is relayRefreshing enabled for this device? Set minutely the nominal relay state and status according to active schedule after power outage and missed switching or anti manipulation.
-    optional string summerTimeDetails = 26 [default = '0360100']; //[default = '0360100',(nanopb).max_count = 7]; // The time point for DST for Europe is not identical in every country. It should be added as parameters the weekday, month and time point for DST/summer and winter.
-    optional string winterTimeDetails = 27 [default = '1060200']; //[default = '1060200',(nanopb).max_count = 7]; // The time point for DST for Europe is not identical in every country. It should be added as parameters the weekday, month and time point for DST/summer and winter.
+    optional string summerTimeDetails = 26 [default = '0360100']; //[default = '0360100',(nanopb).max_size = 8]; // The time point for DST for Europe is not identical in every country. It should be added as parameters the weekday, month and time point for DST/summer and winter.
+    optional string winterTimeDetails = 27 [default = '1060200']; //[default = '1060200',(nanopb).max_size = 8]; // The time point for DST for Europe is not identical in every country. It should be added as parameters the weekday, month and time point for DST/summer and winter.
 }
 // summerTimeDetails string, winterTimeDetails:
 //MMWHHmi
@@ -274,7 +274,7 @@ message GetConfigurationResponse {
     optional uint32 communicationTimeout = 15 [default = 20];                            // Communication Timeouts (seconds) (wait for answer, socket establish, or server response = comm watchdog for local mode).
     optional uint32 communicationNumberOfRetries = 16 [default = 3];                     // Communication number of retries.
     optional uint32 communicationPauseTimeBetweenConnectionTrials = 17 [default = 60];   // Time between communication attempts.
-    optional bytes ospgIpAddress = 18; // [(nanopb).max_count = 4];                      // The IP address of the platform.
+    optional bytes osgpIpAddress = 18; // [(nanopb).max_count = 4];                      // The IP address of the platform.
     optional uint32 osgpPortNumber = 19;                                                 // The port number of the platform.
     optional bool isTestButtonEnabled = 20 [default = true];                             // Is the test button enabled for this device?
     optional bool isAutomaticSummerTimingEnabled = 21 [default = true];                  // Is the automatic summer timing enabled for this device?
@@ -365,6 +365,7 @@ message EventNotification {
     required Event event = 1;
     optional bytes index = 2; // [(nanopb).max_size=1];
     optional string description = 3; // [(nanopb).max_size = 81];
+    optional string timestamp = 4; // [(nanopb).max_size = 15]; // - Format YYYYMMDDhhmmss UTC, indicates the date and time of the event.
 }
 
 message Schedule {
@@ -396,8 +397,8 @@ message RelayConfiguration {
 }
 
 message RelayMatrix {
-    required bytes masterRelayIndex = 1;  // [(nanopb).max_count = 1];
-    required bool masterRelayOn = 2; // [(nanopb).max_count = 1];
+    required bytes masterRelayIndex = 1; // [(nanopb).max_count = 1];
+    required bool masterRelayOn = 2;
     optional bytes indicesOfControlledRelaysOn = 3; // [(nanopb).max_count = 4];  // IndexNumber of output Relay to switch ON if Master Relay state changes as determined by masterRelayOn.
     optional bytes indicesOfControlledRelaysOff = 4; // [(nanopb).max_count = 4]; // IndexNumber of output Relay to switch OFF if Master Relay sate changes as determined by MasterRelayOff.
 }

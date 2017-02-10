@@ -108,7 +108,7 @@ CustomConverter<ConfigurationDto, Oslp.SetConfigurationRequest> {
         }
         if (source.getOsgpIpAddres() != null) {
             setConfigurationRequest
-            .setOspgIpAddress(this.convertTextualIpAddressToByteString(source.getOsgpIpAddres()));
+            .setOsgpIpAddress(this.convertTextualIpAddressToByteString(source.getOsgpIpAddres()));
         }
         if (source.isRelayRefreshing() != null) {
             setConfigurationRequest.setRelayRefreshing(source.isRelayRefreshing());

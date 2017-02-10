@@ -18,6 +18,10 @@ import javax.annotation.Resource;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.ArrayUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -280,6 +284,9 @@ public class RegisterDevice {
             }
 
             final int sequenceNumber = device.doGetNextSequence();
+            final DateTime dateTime = DateTime.now().toDateTime(DateTimeZone.UTC);
+            final DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("YMMddHHmmss");
+            final String timestamp = dateTimeFormatter.print(dateTime);
 
             // Create registration message (for now with 1 event)
             final OslpEnvelope request = this
@@ -296,7 +303,8 @@ public class RegisterDevice {
                                                     description == null ? "" : description)
                                                     .setIndex(
                                                             ByteString.copyFrom(new byte[] { idx
-                                                                    .byteValue() })))).build()).build();
+                                                                    .byteValue() }))
+                                                                    .setTimestamp(timestamp))).build()).build();
 
             // Write request log
             OslpLogItem logItem = new OslpLogItem(request.getDeviceId(), device.getDeviceIdentification(), false,
