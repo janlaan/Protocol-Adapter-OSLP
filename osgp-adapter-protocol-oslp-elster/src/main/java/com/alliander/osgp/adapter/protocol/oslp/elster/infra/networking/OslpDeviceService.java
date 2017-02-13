@@ -13,6 +13,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -64,6 +66,7 @@ import com.alliander.osgp.dto.valueobjects.LinkTypeDto;
 import com.alliander.osgp.dto.valueobjects.PageInfoDto;
 import com.alliander.osgp.dto.valueobjects.PowerUsageDataDto;
 import com.alliander.osgp.dto.valueobjects.PowerUsageHistoryResponseMessageDataContainerDto;
+import com.alliander.osgp.dto.valueobjects.RelayMapDto;
 import com.alliander.osgp.dto.valueobjects.ScheduleDto;
 import com.alliander.osgp.dto.valueobjects.ScheduleMessageDataContainerDto;
 import com.alliander.osgp.oslp.Oslp;
@@ -71,6 +74,8 @@ import com.alliander.osgp.oslp.Oslp.GetFirmwareVersionRequest;
 import com.alliander.osgp.oslp.Oslp.GetStatusRequest;
 import com.alliander.osgp.oslp.Oslp.SetScheduleRequest;
 import com.alliander.osgp.oslp.OslpEnvelope;
+import com.alliander.osgp.shared.exceptionhandling.ComponentType;
+import com.alliander.osgp.shared.exceptionhandling.ConnectionFailureException;
 import com.google.protobuf.ByteString;
 
 @Component
@@ -178,7 +183,8 @@ public class OslpDeviceService implements DeviceService {
     public void doSetLight(final OslpEnvelope oslpRequest, final DeviceRequest setLightdeviceRequest,
             final ResumeScheduleDeviceRequest resumeScheduleDeviceRequest,
             final DeviceResponseHandler setLightDeviceResponseHandler,
-            final DeviceResponseHandler resumeScheduleDeviceResponseHandler, final String ipAddress) throws IOException {
+            final DeviceResponseHandler resumeScheduleDeviceResponseHandler, final String ipAddress)
+            throws IOException {
         LOGGER.info("doSetLight() for device: {}.", setLightdeviceRequest.getDeviceIdentification());
 
         this.saveOslpRequestLogEntry(setLightdeviceRequest, oslpRequest);
@@ -347,9 +353,10 @@ public class OslpDeviceService implements DeviceService {
                 .newBuilder().setCertificateDomain(deviceRequest.getCertification().getCertificateDomain())
                 .setCertificateUrl(deviceRequest.getCertification().getCertificateUrl()).build();
 
-        this.buildAndSignEnvelope(deviceRequest,
-                Oslp.Message.newBuilder().setUpdateDeviceSslCertificationRequest(updateDeviceSslCertificationRequest)
-                .build(), deviceRequest.getCertification());
+        this.buildAndSignEnvelope(
+                deviceRequest, Oslp.Message.newBuilder()
+                        .setUpdateDeviceSslCertificationRequest(updateDeviceSslCertificationRequest).build(),
+                deviceRequest.getCertification());
 
     }
 
@@ -415,9 +422,8 @@ public class OslpDeviceService implements DeviceService {
         LOGGER.info("setSchedule() for device: {}.", deviceRequest.getDeviceIdentification());
 
         final int pageSize = 5;
-        final int numberOfPages = (int) Math.ceil((double) deviceRequest.getScheduleMessageDataContainer()
-                .getScheduleList().size()
-                / pageSize);
+        final int numberOfPages = (int) Math
+                .ceil((double) deviceRequest.getScheduleMessageDataContainer().getScheduleList().size() / pageSize);
 
         if (numberOfPages == 1) {
             this.processOslpRequestSetScheduleSingle(deviceRequest);
@@ -485,7 +491,14 @@ public class OslpDeviceService implements DeviceService {
         final DeviceResponse deviceResponse = new DeviceResponse(deviceRequest.getOrganisationIdentification(),
                 deviceRequest.getDeviceIdentification(), deviceRequest.getCorrelationUid());
 
-        deviceResponseHandler.handleException(t, deviceResponse);
+        if (t instanceof org.jboss.netty.channel.ConnectTimeoutException) {
+            // Replace t by an OSGP Exception
+            final ConnectionFailureException ex = new ConnectionFailureException(ComponentType.PROTOCOL_OSLP,
+                    "Connection timed out");
+            deviceResponseHandler.handleException(ex, deviceResponse);
+        } else {
+            deviceResponseHandler.handleException(t, deviceResponse);
+        }
     }
 
     private void handleOslpResponseSetScheduleSingle(final SetScheduleDeviceRequest deviceRequest,
@@ -509,20 +522,18 @@ public class OslpDeviceService implements DeviceService {
     }
 
     private void buildOslpRequestSetScheduleSingle(final SetScheduleDeviceRequest deviceRequest) {
-        final List<Oslp.Schedule> oslpSchedules = this.convertToOslpSchedules(deviceRequest
-                .getScheduleMessageDataContainer().getScheduleList());
+        final List<Oslp.Schedule> oslpSchedules = this
+                .convertToOslpSchedules(deviceRequest.getScheduleMessageDataContainer().getScheduleList());
 
-        final Oslp.SetScheduleRequest.Builder request = SetScheduleRequest
-                .newBuilder()
-                .addAllSchedules(oslpSchedules)
+        final Oslp.SetScheduleRequest.Builder request = SetScheduleRequest.newBuilder().addAllSchedules(oslpSchedules)
                 .setScheduleType(
                         this.mapper.map(deviceRequest.getRelayType(), com.alliander.osgp.oslp.Oslp.RelayType.class));
 
         final ScheduleMessageDataContainerDto scheduleMessageDataContainer = new ScheduleMessageDataContainerDto(
                 deviceRequest.getScheduleMessageDataContainer().getScheduleList());
 
-        this.buildAndSignEnvelope(deviceRequest, Oslp.Message.newBuilder().setSetScheduleRequest(request.build())
-                .build(), scheduleMessageDataContainer);
+        this.buildAndSignEnvelope(deviceRequest,
+                Oslp.Message.newBuilder().setSetScheduleRequest(request.build()).build(), scheduleMessageDataContainer);
     }
 
     private void processOslpRequestSetSchedulePaged(final SetScheduleDeviceRequest deviceRequest, final Pager pager) {
@@ -581,9 +592,8 @@ public class OslpDeviceService implements DeviceService {
             // Stop processing pages and handle device response.
             this.updateSequenceNumber(deviceRequest.getDeviceIdentification(), oslpResponse);
 
-            final DeviceResponse deviceResponse = new EmptyDeviceResponse(
-                    deviceRequest.getOrganisationIdentification(), deviceRequest.getDeviceIdentification(),
-                    deviceRequest.getCorrelationUid(), status);
+            final DeviceResponse deviceResponse = new EmptyDeviceResponse(deviceRequest.getOrganisationIdentification(),
+                    deviceRequest.getDeviceIdentification(), deviceRequest.getCorrelationUid(), status);
             deviceResponseHandler.handleResponse(deviceResponse);
         } else {
             // Process next page
@@ -597,14 +607,12 @@ public class OslpDeviceService implements DeviceService {
         final List<Oslp.Schedule> oslpSchedules = this.convertToOslpSchedules(deviceRequest
                 .getScheduleMessageDataContainer().getScheduleList().subList(pager.getIndexFrom(), pager.getIndexTo()));
 
-        final Oslp.SetScheduleRequest.Builder oslpRequestBuilder = SetScheduleRequest
-                .newBuilder()
+        final Oslp.SetScheduleRequest.Builder oslpRequestBuilder = SetScheduleRequest.newBuilder()
                 .addAllSchedules(oslpSchedules)
                 .setScheduleType(
                         this.mapper.map(deviceRequest.getRelayType(), com.alliander.osgp.oslp.Oslp.RelayType.class))
-                        .setPageInfo(
-                                Oslp.PageInfo.newBuilder().setCurrentPage(pager.getCurrentPage())
-                                .setPageSize(pager.getPageSize()).setTotalPages(pager.getNumberOfPages()));
+                .setPageInfo(Oslp.PageInfo.newBuilder().setCurrentPage(pager.getCurrentPage())
+                        .setPageSize(pager.getPageSize()).setTotalPages(pager.getNumberOfPages()));
 
         final PageInfoDto pageInfo = new PageInfoDto(pager.getCurrentPage(), pager.getPageSize(),
                 pager.getNumberOfPages());
@@ -678,7 +686,7 @@ public class OslpDeviceService implements DeviceService {
     }
 
     private List<Oslp.Schedule> convertToOslpSchedules(final List<ScheduleDto> schedules) {
-        final List<Oslp.Schedule> oslpSchedules = new ArrayList<Oslp.Schedule>();
+        final List<Oslp.Schedule> oslpSchedules = new ArrayList<>();
 
         for (final ScheduleDto schedule : schedules) {
             Oslp.Schedule.Builder scheduleBuilder = Oslp.Schedule.newBuilder()
@@ -698,9 +706,9 @@ public class OslpDeviceService implements DeviceService {
             }
 
             if (schedule.getTriggerWindow() != null) {
-                scheduleBuilder = scheduleBuilder.setWindow(Oslp.Window.newBuilder()
-                        .setMinutesBefore((int) schedule.getTriggerWindow().getMinutesBefore())
-                        .setMinutesAfter((int) schedule.getTriggerWindow().getMinutesAfter()));
+                scheduleBuilder = scheduleBuilder.setWindow(
+                        Oslp.Window.newBuilder().setMinutesBefore((int) schedule.getTriggerWindow().getMinutesBefore())
+                                .setMinutesAfter((int) schedule.getTriggerWindow().getMinutesAfter()));
             }
 
             for (final LightValueDto lightValue : schedule.getLightValue()) {
@@ -899,7 +907,7 @@ public class OslpDeviceService implements DeviceService {
             final Pager pager, final List<PowerUsageDataDto> powerUsageHistoryData,
             final DeviceResponseHandler deviceResponseHandler, final String ipAddress, final String domain,
             final String domainVersion, final String messageType, final int retryCount, final boolean isScheduled)
-                    throws IOException {
+            throws IOException {
         LOGGER.info("GetPowerUsageHistory() for device: {}, page: {}", deviceRequest.getDeviceIdentification(),
                 pager.getCurrentPage());
         LOGGER.debug("deviceResponseHandler is not used in this function: {}", deviceResponseHandler.toString());
@@ -961,8 +969,8 @@ public class OslpDeviceService implements DeviceService {
 
     private void buildOslpRequestGetPowerUsageHistory(final GetPowerUsageHistoryDeviceRequest deviceRequest,
             final Pager pager, final List<PowerUsageDataDto> powerUsageHistoryData) {
-        final Oslp.HistoryTermType oslpHistoryTermType = this.mapper.map(deviceRequest.getPowerUsageHistoryContainer()
-                .getHistoryTermType(), Oslp.HistoryTermType.class);
+        final Oslp.HistoryTermType oslpHistoryTermType = this.mapper
+                .map(deviceRequest.getPowerUsageHistoryContainer().getHistoryTermType(), Oslp.HistoryTermType.class);
         final Oslp.TimePeriod.Builder oslpTimePeriodBuilder = Oslp.TimePeriod.newBuilder();
         final String startTime = deviceRequest.getPowerUsageHistoryContainer().getTimePeriod().getStartTime()
                 .toDateTime(DateTimeZone.UTC).toString(DATETIME_FORMAT);
@@ -978,14 +986,14 @@ public class OslpDeviceService implements DeviceService {
         final PageInfoDto pageInfo = new PageInfoDto(pager.getCurrentPage(), pager.getPageSize(),
                 pager.getNumberOfPages());
         powerUsageHistoryResponseMessageDataContainer.setPageInfo(pageInfo);
-        powerUsageHistoryResponseMessageDataContainer.setStartTime(deviceRequest.getPowerUsageHistoryContainer()
-                .getTimePeriod().getStartTime());
-        powerUsageHistoryResponseMessageDataContainer.setEndTime(deviceRequest.getPowerUsageHistoryContainer()
-                .getTimePeriod().getEndTime());
-        powerUsageHistoryResponseMessageDataContainer.setHistoryTermType(deviceRequest.getPowerUsageHistoryContainer()
-                .getHistoryTermType());
         powerUsageHistoryResponseMessageDataContainer
-        .setRequestContainer(deviceRequest.getPowerUsageHistoryContainer());
+                .setStartTime(deviceRequest.getPowerUsageHistoryContainer().getTimePeriod().getStartTime());
+        powerUsageHistoryResponseMessageDataContainer
+                .setEndTime(deviceRequest.getPowerUsageHistoryContainer().getTimePeriod().getEndTime());
+        powerUsageHistoryResponseMessageDataContainer
+                .setHistoryTermType(deviceRequest.getPowerUsageHistoryContainer().getHistoryTermType());
+        powerUsageHistoryResponseMessageDataContainer
+                .setRequestContainer(deviceRequest.getPowerUsageHistoryContainer());
 
         this.buildAndSignEnvelope(deviceRequest,
                 Oslp.Message.newBuilder().setGetPowerUsageHistoryRequest(getPowerUsageHistoryRequest).build(),
@@ -1251,15 +1259,15 @@ public class OslpDeviceService implements DeviceService {
     private void buildOslpRequestGetStatus(final DeviceRequest deviceRequest) {
         final Oslp.GetStatusRequest getStatusRequest = GetStatusRequest.newBuilder().build();
 
-        this.buildAndSignEnvelope(deviceRequest, Oslp.Message.newBuilder().setGetStatusRequest(getStatusRequest)
-                .build(), null);
+        this.buildAndSignEnvelope(deviceRequest,
+                Oslp.Message.newBuilder().setGetStatusRequest(getStatusRequest).build(), null);
     }
 
     private void buildOslpRequestResumeSchedule(final ResumeScheduleDeviceRequest deviceRequest) {
         final Oslp.ResumeScheduleRequest.Builder resumeScheduleRequestBuilder = Oslp.ResumeScheduleRequest.newBuilder();
         if (deviceRequest.getResumeScheduleContainer().getIndex() != null) {
-            resumeScheduleRequestBuilder.setIndex(ByteString.copyFrom(new byte[] { deviceRequest
-                    .getResumeScheduleContainer().getIndex().byteValue() }));
+            resumeScheduleRequestBuilder.setIndex(ByteString
+                    .copyFrom(new byte[] { deviceRequest.getResumeScheduleContainer().getIndex().byteValue() }));
 
         }
         resumeScheduleRequestBuilder.setImmediate(deviceRequest.getResumeScheduleContainer().isImmediate());
@@ -1270,6 +1278,17 @@ public class OslpDeviceService implements DeviceService {
     }
 
     private void buildOslpRequestSetConfiguration(final SetConfigurationDeviceRequest deviceRequest) {
+        // First, sort the relay mapping on (internal) index number (FLEX-2514)
+        if (deviceRequest.getConfiguration().getRelayConfiguration() != null) {
+            Collections.sort(deviceRequest.getConfiguration().getRelayConfiguration().getRelayMap(),
+                    new Comparator<RelayMapDto>() {
+                        @Override
+                        public int compare(final RelayMapDto o1, final RelayMapDto o2) {
+                            return o1.getIndex().compareTo(o2.getIndex());
+                        }
+                    });
+        }
+
         final Oslp.SetConfigurationRequest setConfigurationRequest = this.mapper.map(deviceRequest.getConfiguration(),
                 Oslp.SetConfigurationRequest.class);
 
@@ -1309,18 +1328,17 @@ public class OslpDeviceService implements DeviceService {
     private void buildOslpRequestSetReboot(final DeviceRequest deviceRequest) {
         final Oslp.SetRebootRequest setRebootRequest = Oslp.SetRebootRequest.newBuilder().build();
 
-        this.buildAndSignEnvelope(deviceRequest, Oslp.Message.newBuilder().setSetRebootRequest(setRebootRequest)
-                .build(), null);
+        this.buildAndSignEnvelope(deviceRequest,
+                Oslp.Message.newBuilder().setSetRebootRequest(setRebootRequest).build(), null);
     }
 
     private void buildOslpRequestSetTransition(final SetTransitionDeviceRequest deviceRequest) {
         final Oslp.SetTransitionRequest.Builder setTransitionBuilder = Oslp.SetTransitionRequest.newBuilder()
-                .setTransitionType(
-                        this.mapper.map(deviceRequest.getTransitionTypeContainer().getTransitionType(),
-                                com.alliander.osgp.oslp.Oslp.TransitionType.class));
+                .setTransitionType(this.mapper.map(deviceRequest.getTransitionTypeContainer().getTransitionType(),
+                        com.alliander.osgp.oslp.Oslp.TransitionType.class));
         if (deviceRequest.getTransitionTypeContainer().getDateTime() != null) {
             setTransitionBuilder
-            .setTime(deviceRequest.getTransitionTypeContainer().getDateTime().toString(TIME_FORMAT));
+                    .setTime(deviceRequest.getTransitionTypeContainer().getDateTime().toString(TIME_FORMAT));
         }
 
         this.buildAndSignEnvelope(deviceRequest,
@@ -1331,15 +1349,15 @@ public class OslpDeviceService implements DeviceService {
     private void buildOslpRequestStartSelfTest(final DeviceRequest deviceRequest) {
         final Oslp.StartSelfTestRequest startSelftestRequest = Oslp.StartSelfTestRequest.newBuilder().build();
 
-        this.buildAndSignEnvelope(deviceRequest, Oslp.Message.newBuilder()
-                .setStartSelfTestRequest(startSelftestRequest).build(), null);
+        this.buildAndSignEnvelope(deviceRequest,
+                Oslp.Message.newBuilder().setStartSelfTestRequest(startSelftestRequest).build(), null);
     }
 
     private void buildOslpRequestStopSelfTest(final DeviceRequest deviceRequest) {
         final Oslp.StopSelfTestRequest stopSelftestRequest = Oslp.StopSelfTestRequest.newBuilder().build();
 
-        this.buildAndSignEnvelope(deviceRequest, Oslp.Message.newBuilder().setStopSelfTestRequest(stopSelftestRequest)
-                .build(), null);
+        this.buildAndSignEnvelope(deviceRequest,
+                Oslp.Message.newBuilder().setStopSelfTestRequest(stopSelftestRequest).build(), null);
     }
 
     private void buildOslpRequestUpdateFirmware(final UpdateFirmwareDeviceRequest deviceRequest) {
@@ -1468,12 +1486,12 @@ public class OslpDeviceService implements DeviceService {
                 // Required properties.
                 final List<LightValueDto> lightValues = this.mapper.mapAsList(getStatusResponse.getValueList(),
                         LightValueDto.class);
-                final LinkTypeDto preferredType = getStatusResponse.getPreferredLinktype().equals(
-                        Oslp.LinkType.LINK_NOT_SET) ? null : this.mapper.map(getStatusResponse.getPreferredLinktype(),
-                        LinkTypeDto.class);
-                final LinkTypeDto actualLinkType = getStatusResponse.getActualLinktype().equals(
-                        Oslp.LinkType.LINK_NOT_SET) ? null : this.mapper.map(getStatusResponse.getActualLinktype(),
-                                LinkTypeDto.class);
+                final LinkTypeDto preferredType = getStatusResponse.getPreferredLinktype()
+                        .equals(Oslp.LinkType.LINK_NOT_SET) ? null
+                                : this.mapper.map(getStatusResponse.getPreferredLinktype(), LinkTypeDto.class);
+                final LinkTypeDto actualLinkType = getStatusResponse.getActualLinktype()
+                        .equals(Oslp.LinkType.LINK_NOT_SET) ? null
+                                : this.mapper.map(getStatusResponse.getActualLinktype(), LinkTypeDto.class);
                 final LightTypeDto lightType = getStatusResponse.getLightType().equals(Oslp.LightType.LT_NOT_SET) ? null
                         : this.mapper.map(getStatusResponse.getLightType(), LightTypeDto.class);
                 final int eventNotificationMask = getStatusResponse.getEventNotificationMask();
@@ -1544,9 +1562,8 @@ public class OslpDeviceService implements DeviceService {
             }
         }
 
-        final DeviceResponse deviceResponse = new GetStatusDeviceResponse(
-                deviceRequest.getOrganisationIdentification(), deviceRequest.getDeviceIdentification(),
-                deviceRequest.getCorrelationUid(), deviceStatus);
+        final DeviceResponse deviceResponse = new GetStatusDeviceResponse(deviceRequest.getOrganisationIdentification(),
+                deviceRequest.getDeviceIdentification(), deviceRequest.getCorrelationUid(), deviceStatus);
         deviceResponseHandler.handleResponse(deviceResponse);
     }
 
@@ -1661,7 +1678,8 @@ public class OslpDeviceService implements DeviceService {
         setLightDeviceResponseHandler.handleResponse(deviceResponse);
 
         if (this.executeResumeScheduleAfterSetLight && status.equals(DeviceMessageStatus.OK)) {
-            LOGGER.info("Sending ResumeScheduleRequest for device: {}", setLightdeviceRequest.getDeviceIdentification());
+            LOGGER.info("Sending ResumeScheduleRequest for device: {}",
+                    setLightdeviceRequest.getDeviceIdentification());
             this.resumeSchedule(resumeScheduleDeviceRequest);
         } else {
             LOGGER.info(
@@ -1721,7 +1739,7 @@ public class OslpDeviceService implements DeviceService {
 
         this.updateSequenceNumber(deviceRequest.getDeviceIdentification(), oslpResponse);
 
-        DeviceMessageStatus status = null;
+        DeviceMessageStatus status;
         if (oslpResponse.getPayloadMessage().hasStartSelfTestResponse()) {
             final Oslp.Status oslpStatus = oslpResponse.getPayloadMessage().getStartSelfTestResponse().getStatus();
             status = this.mapper.map(oslpStatus, DeviceMessageStatus.class);
@@ -1740,7 +1758,7 @@ public class OslpDeviceService implements DeviceService {
 
         this.updateSequenceNumber(deviceRequest.getDeviceIdentification(), oslpResponse);
 
-        DeviceMessageStatus status = null;
+        DeviceMessageStatus status;
         if (oslpResponse.getPayloadMessage().hasStopSelfTestResponse()) {
             final Oslp.Status oslpStatus = oslpResponse.getPayloadMessage().getStopSelfTestResponse().getStatus();
             status = this.mapper.map(oslpStatus, DeviceMessageStatus.class);
@@ -1831,20 +1849,20 @@ public class OslpDeviceService implements DeviceService {
     }
 
     private void saveOslpResponseLogEntry(final DeviceRequest deviceRequest, final OslpEnvelope oslpResponse) {
-        final OslpDevice oslpDevice = this.oslpDeviceSettingsService.getDeviceByDeviceIdentification(deviceRequest
-                .getDeviceIdentification());
+        final OslpDevice oslpDevice = this.oslpDeviceSettingsService
+                .getDeviceByDeviceIdentification(deviceRequest.getDeviceIdentification());
 
         final OslpLogItemRequestMessage oslpLogItemRequestMessage = new OslpLogItemRequestMessage(
                 deviceRequest.getOrganisationIdentification(), oslpDevice.getDeviceUid(),
-                deviceRequest.getDeviceIdentification(), true, oslpResponse.isValid(),
-                oslpResponse.getPayloadMessage(), oslpResponse.getSize());
+                deviceRequest.getDeviceIdentification(), true, oslpResponse.isValid(), oslpResponse.getPayloadMessage(),
+                oslpResponse.getSize());
 
         this.oslpLogItemRequestMessageSender.send(oslpLogItemRequestMessage);
     }
 
     private void saveOslpRequestLogEntry(final DeviceRequest deviceRequest, final OslpEnvelope oslpRequest) {
-        final OslpDevice oslpDevice = this.oslpDeviceSettingsService.getDeviceByDeviceIdentification(deviceRequest
-                .getDeviceIdentification());
+        final OslpDevice oslpDevice = this.oslpDeviceSettingsService
+                .getDeviceByDeviceIdentification(deviceRequest.getDeviceIdentification());
 
         final OslpLogItemRequestMessage oslpLogItemRequestMessage = new OslpLogItemRequestMessage(
                 deviceRequest.getOrganisationIdentification(), oslpDevice.getDeviceUid(),
