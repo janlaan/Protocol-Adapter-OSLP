@@ -1,5 +1,7 @@
 FROM tomcat:7.0.73-jre8-alpine
 
+ENV JAVA_OPTS="-Xms256m -Xmx500m"
+
 MAINTAINER smart society services
 
 ADD target/*.war /usr/local/tomcat/webapps
