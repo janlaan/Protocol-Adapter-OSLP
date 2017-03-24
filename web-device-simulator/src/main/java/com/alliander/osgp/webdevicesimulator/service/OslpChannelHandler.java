@@ -298,8 +298,8 @@ public class OslpChannelHandler extends SimpleChannelHandler {
 
                 // Build the OslpEnvelope with the incremented sequence number.
                 final OslpEnvelope.Builder responseBuilder = new OslpEnvelope.Builder()
-                        .withSignature(this.oslpSignature).withProvider(this.oslpSignatureProvider)
-                        .withPrimaryKey(this.privateKey).withDeviceId(deviceId).withSequenceNumber(sequenceNumber);
+                .withSignature(this.oslpSignature).withProvider(this.oslpSignatureProvider)
+                .withPrimaryKey(this.privateKey).withDeviceId(deviceId).withSequenceNumber(sequenceNumber);
 
                 // Pass the incremented sequence number to the handleRequest()
                 // function for checking.
@@ -601,7 +601,8 @@ public class OslpChannelHandler extends SimpleChannelHandler {
 
     private static Message createSwitchFirmwareResponse() {
         return Oslp.Message.newBuilder()
-                .setSwitchFirmwareResponse(Oslp.SwitchFirmwareResponse.newBuilder().setStatus(Oslp.Status.OK)).build();
+                .setSwitchFirmwareResponse(Oslp.SwitchFirmwareResponse.newBuilder().setStatus(Oslp.Status.FAILURE))
+                .build();
     }
 
     private static Message createSetDeviceVerificationKeyResponse() {
@@ -699,7 +700,7 @@ public class OslpChannelHandler extends SimpleChannelHandler {
         final int usagePerItem = powerUsageHistoryRequest.getTermType() == HistoryTermType.Short ? 2400 : 57600;
 
         // If from in the future, return emtpy list
-        final List<PowerUsageData> powerUsageDataList = new ArrayList<PowerUsageData>();
+        final List<PowerUsageData> powerUsageDataList = new ArrayList<>();
         if (dateTimeFrom.isAfter(now)) {
             return createUsageMessage(1, itemsPerPage, 1, powerUsageDataList);
         }
@@ -768,8 +769,8 @@ public class OslpChannelHandler extends SimpleChannelHandler {
                                                     .setIndex(ByteString.copyFrom(new byte[] { 2 }))
                                                     .setTotalLightingMinutes(
                                                             INITIAL_BURNING_MINUTES - randomCumulativeMinutes))
-                                            .addRelayData(
-                                                    Oslp.RelayData
+                                    .addRelayData(
+                                            Oslp.RelayData
                                                     .newBuilder()
                                                     .setIndex(ByteString.copyFrom(new byte[] { 3 }))
                                                     .setTotalLightingMinutes(
@@ -780,7 +781,7 @@ public class OslpChannelHandler extends SimpleChannelHandler {
                                                     .setIndex(ByteString.copyFrom(new byte[] { 4 }))
                                                     .setTotalLightingMinutes(
                                                             INITIAL_BURNING_MINUTES - randomCumulativeMinutes)))
-                    .build();
+                                                    .build();
 
             powerUsageDataList.add(powerUsageData);
             pageStartTime = pageStartTime.minusMinutes(intervalMinutes);
@@ -831,7 +832,7 @@ public class OslpChannelHandler extends SimpleChannelHandler {
                 .addAddressMap(
                         IndexAddressMap.newBuilder().setIndex(ByteString.copyFrom(new byte[] { 1 }))
                                 .setAddress(ByteString.copyFrom(new byte[] { 1 })).setRelayType(RelayType.RT_NOT_SET))
-                .setNumberOfLights(ByteString.copyFrom(new byte[] { 1 }));
+                        .setNumberOfLights(ByteString.copyFrom(new byte[] { 1 }));
 
         final Oslp.GetConfigurationResponse.Builder configuration = Oslp.GetConfigurationResponse.newBuilder();
         try {
@@ -856,9 +857,9 @@ public class OslpChannelHandler extends SimpleChannelHandler {
                 configuration.setNetMask(ByteString.copyFrom(InetAddress.getByName("255.255.255.0").getAddress()));
                 configuration.setGateWay(ByteString.copyFrom(InetAddress.getByName("192.168.0.1").getAddress()));
                 configuration.setIsDhcpEnabled(false);
-//                configuration.setIsTlsEnabled(true);
-//                configuration.setOslpBindPortNumber(1234);
-//                configuration.setCommonNameString("TLS Test");
+                // configuration.setIsTlsEnabled(true);
+                // configuration.setOslpBindPortNumber(1234);
+                // configuration.setCommonNameString("TLS Test");
                 configuration.setCommunicationTimeout(30);
                 configuration.setCommunicationNumberOfRetries(5);
                 configuration.setCommunicationPauseTimeBetweenConnectionTrials(120);
