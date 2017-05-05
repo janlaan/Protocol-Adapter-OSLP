@@ -1,4 +1,3 @@
-package com.alliander.osgp.adapter.protocol.oslp.elster.test.sequence.number;
 /**
  * Copyright 2017 Smart Society Services B.V.
  *
@@ -8,6 +7,7 @@ package com.alliander.osgp.adapter.protocol.oslp.elster.test.sequence.number;
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  */
+package com.alliander.osgp.adapter.protocol.oslp.elster.test.sequence.number;
 
 import org.junit.Assert;
 import org.junit.Test;
