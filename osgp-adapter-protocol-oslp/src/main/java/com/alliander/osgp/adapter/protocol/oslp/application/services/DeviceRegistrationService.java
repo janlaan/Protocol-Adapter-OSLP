@@ -142,7 +142,7 @@ public class DeviceRegistrationService {
         }
 
         if (Math.abs(expectedSequenceNumber - newSequenceNumber) <= this.sequenceNumberWindow
-                || Math.abs(expectedSequenceNumber - newSequenceNumber) >= this.sequenceNumberMaximum
+                || Math.abs(expectedSequenceNumber - newSequenceNumber) > this.sequenceNumberMaximum
                         - this.sequenceNumberWindow) {
             LOGGER.debug("SequenceNumber OK");
         } else {

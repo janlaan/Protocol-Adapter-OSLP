@@ -1,9 +1,4 @@
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.alliander.osgp.adapter.protocol.oslp.elster.application.services.DeviceRegistrationService;
-import com.alliander.osgp.adapter.protocol.oslp.elster.exceptions.ProtocolAdapterException;
-
+package com.alliander.osgp.adapter.protocol.oslp.elster.test.sequence.number;
 /**
  * Copyright 2017 Smart Society Services B.V.
  *
@@ -14,7 +9,14 @@ import com.alliander.osgp.adapter.protocol.oslp.elster.exceptions.ProtocolAdapte
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.alliander.osgp.adapter.protocol.oslp.elster.application.services.DeviceRegistrationService;
+import com.alliander.osgp.adapter.protocol.oslp.elster.exceptions.ProtocolAdapterException;
+
 public class SequenceNumberTest {
+
     private class TestableDeviceRegistrationService extends DeviceRegistrationService {
         public TestableDeviceRegistrationService() {
             this.setSequenceNumberMaximum(65535);
@@ -47,9 +49,8 @@ public class SequenceNumberTest {
         this.callFunction(1, 65534, false);
         this.callFunction(1, 65533, false);
         this.callFunction(1, 65532, false);
-        this.callFunction(1, 65531, false);
+        this.callFunction(1, 65531, true);
         this.callFunction(1, 65530, true);
-        this.callFunction(1, 65529, true);
     }
 
     @Test
@@ -61,16 +62,14 @@ public class SequenceNumberTest {
         this.callFunction(65530, 65535, false);
         this.callFunction(65530, 0, false);
         this.callFunction(65530, 1, false);
-        this.callFunction(65530, 2, false);
+        this.callFunction(65530, 2, true);
         this.callFunction(65530, 3, true);
-        this.callFunction(65530, 4, true);
     }
 
     @Test
     public void test4() {
-        this.callFunction(65535, 65527, true);
         this.callFunction(65535, 65528, true);
-        this.callFunction(65535, 65529, false);
+        this.callFunction(65535, 65529, true);
         this.callFunction(65535, 65530, false);
         this.callFunction(65535, 65531, false);
         this.callFunction(65535, 65532, false);

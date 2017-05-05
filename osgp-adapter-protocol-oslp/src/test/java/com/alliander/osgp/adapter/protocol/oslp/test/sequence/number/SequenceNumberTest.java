@@ -47,9 +47,8 @@ public class SequenceNumberTest {
         this.callFunction(1, 65534, false);
         this.callFunction(1, 65533, false);
         this.callFunction(1, 65532, false);
-        this.callFunction(1, 65531, false);
+        this.callFunction(1, 65531, true);
         this.callFunction(1, 65530, true);
-        this.callFunction(1, 65529, true);
     }
 
     @Test
@@ -61,16 +60,14 @@ public class SequenceNumberTest {
         this.callFunction(65530, 65535, false);
         this.callFunction(65530, 0, false);
         this.callFunction(65530, 1, false);
-        this.callFunction(65530, 2, false);
+        this.callFunction(65530, 2, true);
         this.callFunction(65530, 3, true);
-        this.callFunction(65530, 4, true);
     }
 
     @Test
     public void test4() {
-        this.callFunction(65535, 65527, true);
         this.callFunction(65535, 65528, true);
-        this.callFunction(65535, 65529, false);
+        this.callFunction(65535, 65529, true);
         this.callFunction(65535, 65530, false);
         this.callFunction(65535, 65531, false);
         this.callFunction(65535, 65532, false);
