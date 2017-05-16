@@ -14,7 +14,7 @@
 
   <artifactId>parent-pa-oslp</artifactId>
   <groupId>com.alliander.osgp</groupId>
-  <version>4.10.2</version>
+  <version>4.11.0</version>
   <packaging>pom</packaging>
   <name>parent-pa-oslp</name>
   <!-- Description, Organization, Licenses, URL and Distribution Management elements are needed for the maven-jxr-plugin to generate a maven site -->
@@ -58,7 +58,7 @@
     <java.version>1.8</java.version>
     <module.baseUri>${project.baseUri}/../</module.baseUri>
     <osgp.version>${project.version}</osgp.version>
-    <osgp.shared.version>4.10.2</osgp.shared.version>
+    <osgp.shared.version>4.11.0</osgp.shared.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <spring.version>4.3.5.RELEASE</spring.version>
@@ -77,7 +77,7 @@
     <apache.commons.lang.version>3.3.2</apache.commons.lang.version>
     <apache.httpcomponents.version>4.3.5</apache.httpcomponents.version>
     <commons.codec.version>1.9</commons.codec.version>
-    <orika.version>1.4.5</orika.version>
+    <orika.version>1.5.1</orika.version>
     <netty.version>3.9.4.Final</netty.version>
     <jxr.version>2.5</jxr.version>
     <maven.project.info.reports.plugin.version>2.9</maven.project.info.reports.plugin.version>
