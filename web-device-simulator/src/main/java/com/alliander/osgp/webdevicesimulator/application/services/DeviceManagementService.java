@@ -14,12 +14,15 @@ import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.alliander.osgp.webdevicesimulator.domain.entities.Device;
 import com.alliander.osgp.webdevicesimulator.domain.repositories.DeviceRepository;
 import com.alliander.osgp.webdevicesimulator.domain.valueobjects.EventNotificationToBeSent;
 
 @Service
+@Transactional(value = "webServiceClientTransactionManager", propagation = Propagation.REQUIRES_NEW)
 public class DeviceManagementService {
 
     @Resource

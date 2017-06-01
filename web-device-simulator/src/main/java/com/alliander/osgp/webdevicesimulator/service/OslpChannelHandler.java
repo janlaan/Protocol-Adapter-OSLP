@@ -439,7 +439,7 @@ public class OslpChannelHandler extends SimpleChannelHandler {
         LOGGER.info("deviceId as BASE 64 STRING: {}", deviceIdString);
 
         // lookup correct device.
-        final Device device = this.deviceManagementService.findDevice(deviceIdString);
+        Device device = this.deviceManagementService.findDevice(deviceIdString);
         if (device == null) {
             throw new DeviceSimulatorException("device with id: " + deviceIdString + " is unknown");
         }
@@ -468,6 +468,10 @@ public class OslpChannelHandler extends SimpleChannelHandler {
             final Long randomDelay = (long) (this.reponseDelayRandomRange * this.random.nextDouble());
             this.sleep(this.responseDelayTime + randomDelay);
         }
+
+        // Refresh device to mitigate JpaOptimisticLockingFailureException
+        // occurs.
+        device = this.deviceManagementService.findDevice(deviceIdString);
 
         // Handle only expected messages
         if (request.hasStartSelfTestRequest()) {

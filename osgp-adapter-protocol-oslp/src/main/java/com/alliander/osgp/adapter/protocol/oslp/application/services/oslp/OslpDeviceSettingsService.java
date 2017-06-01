@@ -13,13 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.alliander.osgp.adapter.protocol.oslp.domain.entities.OslpDevice;
 import com.alliander.osgp.adapter.protocol.oslp.domain.repositories.OslpDeviceRepository;
 
 @Service
-@Transactional(value = "transactionManager")
+@Transactional(value = "transactionManager", propagation = Propagation.REQUIRES_NEW)
 public class OslpDeviceSettingsService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OslpDeviceSettingsService.class);
