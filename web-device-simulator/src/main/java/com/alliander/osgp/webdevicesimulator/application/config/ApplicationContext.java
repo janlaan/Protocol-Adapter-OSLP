@@ -9,11 +9,8 @@ package com.alliander.osgp.webdevicesimulator.application.config;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 
@@ -82,7 +79,7 @@ public class ApplicationContext {
     private static final String VIEW_RESOLVER_SUFFIX = ".jsp";
 
     private static final String PROPERTY_NAME_DATABASE_DRIVER = "db.driver";
-    private static final String PROPERTY_NAME_DATABASE_PASSWORD = "db.password";
+    private static final String PROPERTY_NAME_DATABASE_PW = "db.password";
     private static final String PROPERTY_NAME_DATABASE_URL = "db.url";
     private static final String PROPERTY_NAME_DATABASE_USERNAME = "db.username";
 
@@ -130,6 +127,14 @@ public class ApplicationContext {
 
     private static final String PROPERTY_NAME_FIRMWARE_VERSION = "firmware.version";
 
+    private static final String PROPERTY_NAME_CONFIGURATION_IP_CONFIG_FIXED_IP_ADDRESS = "configuration.ip.config.fixed.ip.address";
+    private static final String PROPERTY_NAME_CONFIGURATION_IP_CONFIG_NETMASK = "configuration.ip.config.netmask";
+    private static final String PROPERTY_NAME_CONFIGURATION_IP_CONFIG_GATEWAY = "configuration.ip.config.gateway";
+    private static final String PROPERTY_NAME_CONFIGURATION_OSGP_IP_ADDRESS = "configuration.osgp.ip.address";
+    private static final String PROPERTY_NAME_CONFIGURATION_OSGP_PORT_NUMBER = "configuration.osgp.port.number";
+
+    private static final String PROPERTY_NAME_STATUS_INTERNAL_IP_ADDRESS = "status.internal.ip.address";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationContext.class);
 
     @Resource
@@ -149,7 +154,7 @@ public class ApplicationContext {
             hikariConfig.setDriverClassName(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_DRIVER));
             hikariConfig.setJdbcUrl(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_URL));
             hikariConfig.setUsername(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_USERNAME));
-            hikariConfig.setPassword(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_PASSWORD));
+            hikariConfig.setPassword(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_PW));
 
             hikariConfig.setMaximumPoolSize(
                     Integer.parseInt(this.environment.getRequiredProperty(PROPERTY_NAME_DATABASE_MAX_POOL_SIZE)));
@@ -165,11 +170,9 @@ public class ApplicationContext {
      * Method for creating the Transaction Manager.
      *
      * @return JpaTransactionManager
-     * @throws ClassNotFoundException
-     *             when class not found
      */
     @Bean
-    public JpaTransactionManager transactionManager() throws ClassNotFoundException {
+    public JpaTransactionManager transactionManager() {
         final JpaTransactionManager transactionManager = new JpaTransactionManager();
 
         transactionManager.setEntityManagerFactory(this.entityManagerFactory().getObject());
@@ -197,12 +200,10 @@ public class ApplicationContext {
      * Method for creating the Entity Manager Factory Bean.
      *
      * @return LocalContainerEntityManagerFactoryBean
-     * @throws ClassNotFoundException
-     *             when class not found
      */
     @Bean
     @DependsOn("flyway")
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() throws ClassNotFoundException {
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         final LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
 
         entityManagerFactoryBean.setPersistenceUnitName("OSPG_DEVICESIMULATOR_WEB");
@@ -263,16 +264,10 @@ public class ApplicationContext {
         final ChannelFactory factory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
                 Executors.newCachedThreadPool());
 
-        final ChannelPipelineFactory pipelineFactory = new ChannelPipelineFactory() {
-            @Override
-            public ChannelPipeline getPipeline()
-                    throws InvalidKeySpecException, NoSuchAlgorithmException, IOException, NoSuchProviderException {
-                final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
-
-                LOGGER.info("Created new client pipeline");
-
-                return pipeline;
-            }
+        final ChannelPipelineFactory pipelineFactory = () -> {
+            final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
+            LOGGER.info("Created new client pipeline");
+            return pipeline;
         };
 
         final ClientBootstrap bootstrap = new ClientBootstrap(factory);
@@ -293,15 +288,10 @@ public class ApplicationContext {
 
         final ServerBootstrap bootstrap = new ServerBootstrap(factory);
 
-        bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-            @Override
-            public ChannelPipeline getPipeline()
-                    throws InvalidKeySpecException, NoSuchAlgorithmException, IOException, NoSuchProviderException {
-                final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
-                LOGGER.info("Created new server pipeline");
-
-                return pipeline;
-            }
+        bootstrap.setPipelineFactory(() -> {
+            final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
+            LOGGER.info("Created new server pipeline");
+            return pipeline;
         });
 
         bootstrap.setOption("child.tcpNoDelay", true);
@@ -319,15 +309,10 @@ public class ApplicationContext {
 
         final ServerBootstrap bootstrap = new ServerBootstrap(factory);
 
-        bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-            @Override
-            public ChannelPipeline getPipeline()
-                    throws InvalidKeySpecException, NoSuchAlgorithmException, IOException, NoSuchProviderException {
-                final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
-                LOGGER.info("Created new server pipeline");
-
-                return pipeline;
-            }
+        bootstrap.setPipelineFactory(() -> {
+            final ChannelPipeline pipeline = ApplicationContext.this.createPipeLine();
+            LOGGER.info("Created new server pipeline");
+            return pipeline;
         });
 
         bootstrap.setOption("child.tcpNoDelay", true);
@@ -338,8 +323,7 @@ public class ApplicationContext {
         return bootstrap;
     }
 
-    private ChannelPipeline createPipeLine()
-            throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException {
+    private ChannelPipeline createPipeLine() {
         final ChannelPipeline pipeline = Channels.pipeline();
 
         pipeline.addLast("oslpEncoder", new OslpEncoder());
@@ -356,14 +340,12 @@ public class ApplicationContext {
     }
 
     @Bean
-    public OslpDecoder oslpDecoder()
-            throws InvalidKeySpecException, NoSuchAlgorithmException, IOException, NoSuchProviderException {
+    public OslpDecoder oslpDecoder() {
         return new OslpDecoder(this.oslpSignature(), this.oslpSignatureProvider());
     }
 
     @Bean
-    public PublicKey publicKey()
-            throws NoSuchAlgorithmException, IOException, InvalidKeySpecException, NoSuchProviderException {
+    public PublicKey publicKey() throws IOException {
         return CertificateHelper.createPublicKey(
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_VERIFYKEY_PATH),
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE),
@@ -371,8 +353,7 @@ public class ApplicationContext {
     }
 
     @Bean
-    public PrivateKey privateKey()
-            throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+    public PrivateKey privateKey() throws IOException {
         return CertificateHelper.createPrivateKey(
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_SIGNKEY_PATH),
                 this.environment.getProperty(PROPERTY_NAME_OSLP_SECURITY_KEYTYPE),
@@ -512,6 +493,36 @@ public class ApplicationContext {
     @Bean
     public String firmwareVersion() {
         return this.environment.getRequiredProperty(PROPERTY_NAME_FIRMWARE_VERSION);
+    }
+
+    @Bean
+    public String configurationIpConfigFixedIpAddress() {
+        return this.environment.getRequiredProperty(PROPERTY_NAME_CONFIGURATION_IP_CONFIG_FIXED_IP_ADDRESS);
+    }
+
+    @Bean
+    public String configurationIpConfigNetmask() {
+        return this.environment.getRequiredProperty(PROPERTY_NAME_CONFIGURATION_IP_CONFIG_NETMASK);
+    }
+
+    @Bean
+    public String configurationIpConfigGateway() {
+        return this.environment.getRequiredProperty(PROPERTY_NAME_CONFIGURATION_IP_CONFIG_GATEWAY);
+    }
+
+    @Bean
+    public String configurationOsgpIpAddress() {
+        return this.environment.getRequiredProperty(PROPERTY_NAME_CONFIGURATION_OSGP_IP_ADDRESS);
+    }
+
+    @Bean
+    public Integer configurationOsgpPortNumber() {
+        return Integer.valueOf(this.environment.getRequiredProperty(PROPERTY_NAME_CONFIGURATION_OSGP_PORT_NUMBER));
+    }
+
+    @Bean
+    public String statusInternalIpAddress() {
+        return this.environment.getRequiredProperty(PROPERTY_NAME_STATUS_INTERNAL_IP_ADDRESS);
     }
 
     @PreDestroy
